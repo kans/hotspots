@@ -1,11 +1,12 @@
 require 'sinatra'
-require 'net/http'
-require 'open-uri'
 require 'github_api'
 
+require './settings'
+include Settings
+
 def install_hooks
-  github = Github.new basic_auth:'', repo:'reach', org:'racker'
-  github.repos.hooks.get name:"web"
+  github = Github.new basic_auth: Settings::auth
+  github.repos.hooks.get 'racker', 'reach', name:"web"
 end
 
 configure do  install_hooks

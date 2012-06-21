@@ -1,2 +1,5 @@
-user = "rac"
-password = "1"
+
+module Settings
+  attr_accessor :auth
+  @@auth = ""
+end
