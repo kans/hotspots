@@ -3,7 +3,7 @@ require 'json'
 require 'sinatra'
 require 'github_api'
 
-def handle_hooks
+configure do
   settings = JSON.parse(File.read 'settings.json')
   org = settings['org']
   repo = settings['repo']
@@ -23,7 +23,4 @@ def handle_hooks
   end
   github.repos.hooks.create org, repo, name: "web", active: true, config:
     {url: address, content_type: "json"}
-end
-
-configure do handle_hooks
 end
