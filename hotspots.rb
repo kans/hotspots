@@ -4,10 +4,8 @@ require 'open-uri'
 require 'github_api'
 
 def install_hooks
-  repo = ['Racker', 'Reach']
-
   github = Github.new basic_auth:'', repo:'reach', org:'racker'
-  github.repos.hooks.create 'user-name','repo-name', name:"web"
+  github.repos.hooks.get name:"web"
 end
 
 configure do  install_hooks
