@@ -32,7 +32,7 @@ configure do
   res.each_page do |page|
     page.each do |commit|
       if commit.commit.message =~ regex
-        to_fetch.append(commit)
+        to_fetch.push(commit)
       end
     end
   end
