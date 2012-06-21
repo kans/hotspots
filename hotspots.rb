@@ -1,8 +1,7 @@
-require 'sinatra'
-require 'github_api'
-
 require 'json'
 
+require 'sinatra'
+require 'github_api'
 
 def install_hooks
   settings = JSON.parse(File.read 'settings.json')
@@ -14,4 +13,3 @@ end
 
 configure do  install_hooks
 end
-
