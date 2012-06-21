@@ -18,7 +18,7 @@ configure do
     end
   end
   hooks_to_delete.each do |hook|
-    puts 'deletig hook ', hook
+    puts 'Deleting hook ', hook
     github.repos.hooks.delete org, repo, hook.id
   end
   github.repos.hooks.create org, repo, name: "web", active: true, config:
