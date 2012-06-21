@@ -1,4 +1,7 @@
 {
-  "login": "racker-api",
-  "password": ""
+  "login": "username",
+  "password": "password1234",
+  "org": "organization",
+  "repo": "project_name",
+  "address": "http://example.com/"
 }
