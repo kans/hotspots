@@ -22,5 +22,23 @@ configure do
     github.repos.hooks.delete org, repo, hook.id
   end
   github.repos.hooks.create org, repo, name: "web", active: true, config:
-    {url: address, content_type: "json"}
+    {url: "#{address}/api/#{org}/#{repo}/#{settings['name']}", content_type: "json"}
+
+  res = github.repos.commits.all org, repo, per_page: 100, page:1
+
+  regex ||= /fix(es|ed)?|close(s|d)?/i
+
+  to_fetch = []
+  res.each_page do |page|
+    page.each do |commit|
+      if commit.commit.message =~ regex
+        to_fetch.append(commit)
+      end
+    end
+  end
+
+  post "/api/:org/:repo/:name" do
+    puts params
+  end
+
 end
