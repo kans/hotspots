@@ -8,7 +8,7 @@ def install_hooks
   puts  login: settings['login'], password: settings['password']
   github = Github.new basic_auth: "#{settings['login']}:#{settings['password']}"
   hooks = github.repos.hooks.all 'racker', 'reach'
-  exit(0)
+  hooks.delete_if {|hook| hook.name != 'web'}
 end
 
 configure do  install_hooks
