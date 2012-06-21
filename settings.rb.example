@@ -1,5 +1,0 @@
-
-module Settings
-  attr_accessor :auth
-  @@auth = ""
-end
