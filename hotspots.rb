@@ -1,48 +1,58 @@
 require 'json'
+require 'CGI'
 
 require 'sinatra'
 require 'github_api'
 require 'debugger'
 require 'grit'
 
+include FileUtils
+
 configure do
   settings = JSON.parse(File.read 'settings.json')
   org = settings['org']
   repo = settings['repo']
   address = settings['address']
+  login = settings['login']
+  password = CGI::escape settings['password']
 
   hook_url = "#{address}/api/#{org}/#{repo}/#{settings['name']}"
 
-  github = Github.new basic_auth: "#{settings['login']}:#{settings['password']}"
-  hooks = github.repos.hooks.all org, repo
-  hooks_to_delete = []
-  hooks.each do |hook|
-    if hook.name == "web" and hook.config.url == hook_url then
-      hooks_to_delete.push(hook)
-    end
-  end
-  hooks_to_delete.each do |hook|
-    github.repos.hooks.delete org, repo, hook.id
-  end
-  github.repos.hooks.create org, repo, name: "web", active: true, config:
-    {url: hook_url, content_type: "json"}
+  # github = Github.new basic_auth: "#{settings['login']}:#{settings['password']}"
+  # hooks = github.repos.hooks.all org, repo
+  # hooks_to_delete = []
+  # hooks.each do |hook|
+  #   if hook.name == "web" and hook.config.url == hook_url then
+  #     hooks_to_delete.push(hook)
+  #   end
+  # end
+  # hooks_to_delete.each do |hook|
+  #   github.repos.hooks.delete org, repo, hook.id
+  # end
+  # github.repos.hooks.create org, repo, name: "web", active: true, config:
+  #   {url: hook_url, content_type: "json"}
 
   regex ||= /fix(es|ed)?|close(s|d)?/i
 
   Fix = Struct.new(:message, :date, :files)
   Spot = Struct.new(:file, :score)
 
-  grit = Grit::Repo.new "repos/#{repo}"
-  grit.clone({:branch => 'origin/master'},"git://github.com/#{org}/#{repo}.git", "repos/#{repo}")
+  repo_dir = "#{settings['repo_dir']}/#{org}/#{repo}"
+  mkdir_p(repo_dir, mode: 0755)
+  grit_repo = Grit::Git.new repo_dir
 
+  process = grit_repo.clone({progress: true, process_info: true},
+    "https://#{login}:#{password}@github.com/#{org}/#{repo}", repo_dir)
+  print process[2]
   fixes = []
 
   regex ||= /fix(es|ed)?|close(s|d)?/i
 
-  tree = grit.tree('master')
+  tree = grit_repo.tree('master')
 
-  commit_list = grit.git.rev_list({:max_count => false, :no_merges => true, :pretty => "raw", :timeout => false}, branch)
-  Grit::Commit.list_from_string(grit, commit_list).each do |commit|
+  commit_list = grit_repo.git.rev_list({:max_count => false, :no_merges => true,
+    :pretty => "raw", :timeout => false}, 'master')
+  Grit::Commit.list_from_string(grit_repo, commit_list).each do |commit|
     if commit.message =~ regex
       files = commit.stats.files.map {|s| s.first}.select{ |s| tree/s }
       fixes << Fix.new(commit.short_message, commit.date, files)
