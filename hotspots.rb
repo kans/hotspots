@@ -5,6 +5,7 @@ require 'sinatra'
 require 'github_api'
 require 'debugger'
 require 'grit'
+require 'haml'
 
 include FileUtils
 
@@ -16,6 +17,7 @@ configure do
   login = settings['login']
   password = CGI::escape settings['password']
 
+  all_hotspots = {}
 
   hook_url = "#{address}/api/#{org}/#{repo}/#{settings['name']}"
 
@@ -38,17 +40,26 @@ configure do
   Fix = Struct.new(:message, :date, :files)
   Spot = Struct.new(:file, :score)
 
-  repo_dir = "#{settings['repo_dir']}/#{org}/#{repo}"
+  repo_dir = File.join(settings['repo_dir'], "#{org}/#{repo}")
+  puts repo_dir
   mkdir_p(repo_dir, mode: 0755)
+
   grit_repo = Grit::Git.new repo_dir
-
-
   process = grit_repo.clone({progress: true, process_info: true},
     "https://#{login}:#{password}@github.com/#{org}/#{repo}", repo_dir)
   print process[2]
-  fixes = []
 
-  regex ||= /fix(es|ed)?|close(s|d)?/i
+  branch = 'master'
+  fixes = []
+  grit_repo = Grit::Repo.new repo_dir
+  tree = grit_repo.tree(branch)
+  commit_list = grit_repo.git.rev_list({:max_count => false, :no_merges => true, :pretty => "raw", :timeout => false}, branch)
+  Grit::Commit.list_from_string(grit_repo, commit_list).each do |commit|
+    if commit.message =~ regex
+      files = commit.stats.files.map {|s| s.first}.select{ |s| tree/s }
+      fixes << Fix.new(commit.short_message, commit.date, files)
+    end
+  end
 
   hotspots = Hash.new(0)
   fixes.each do |fix|
@@ -62,12 +73,21 @@ configure do
     Spot.new(spot.first, sprintf('%.4f', spot.last))
   end
 
-
-
-  paths = {}
+  if all_hotspots[org] == nil
+    all_hotspots[org] = {}
+  end
+  all_hotspots[org][repo] = spots
 
   post "/api/:org/:repo/:name" do
     puts params
+    params
   end
 
+  get "/hotspots/:org/:repo" do
+    haml :hotspots, locals:{ :hotspots => all_hotspots[org][repo], :org => org, :repo => repo }
+  end
+
+  get '/' do
+    "hello"
+  end
 end
