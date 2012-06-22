@@ -88,6 +88,6 @@ configure do
   end
 
   get '/' do
-    "hello"
+    haml :index, locals:{ :all_hotspots => all_hotspots }
   end
 end
