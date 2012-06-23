@@ -11,6 +11,18 @@ class Repo < OpenStruct
   @@Fix = Struct.new(:message, :date, :files)
   @@Spot = Struct.new(:file, :score)
 
+  def initialize(repo)
+    super(repo)
+    self.dir = File.join($settings['repo_dir'], "#{self.org}/#{self.name}")
+    mkdir_p(self.dir, mode: 0755)
+
+    grit_repo = Grit::Git.new self.dir
+    password = CGI::escape self.password
+    process = grit_repo.clone({progress: true, process_info: true},
+      "https://#{self.login}:#{password}@github.com/#{self.org}/#{self.name}", self.dir)
+    print process[2]
+  end
+
   def set_hooks()
     hook_url = URI.join $settings['address'], "/api/#{self.org}/#{self.name}"
 
@@ -32,18 +44,8 @@ class Repo < OpenStruct
   def find_hotspots(branch='master')
     regex = /fix(es|ed)?|close(s|d)?/i
 
-    repo_dir = File.join($settings['repo_dir'], "#{self.org}/#{self.name}")
-    puts repo_dir
-    mkdir_p(repo_dir, mode: 0755)
-
-    grit_repo = Grit::Git.new repo_dir
-    password = CGI::escape self.password
-    process = grit_repo.clone({progress: true, process_info: true},
-      "https://#{self.login}:#{password}@github.com/#{self.org}/#{self.name}", repo_dir)
-    print process[2]
-
     fixes = []
-    grit_repo = Grit::Repo.new repo_dir
+    grit_repo = Grit::Repo.new self.dir
     tree = grit_repo.tree(branch)
     commit_list = grit_repo.git.rev_list({:max_count => false, :no_merges => true, :pretty => "raw", :timeout => false}, branch)
     Grit::Commit.list_from_string(grit_repo, commit_list).each do |commit|
