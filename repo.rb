@@ -1,7 +1,9 @@
 require 'ostruct'
+require 'uri'
 
 require 'debugger'
 require 'grit'
+require 'github_api'
 
 include FileUtils
 
@@ -9,13 +11,8 @@ class Repo < OpenStruct
   @@Fix = Struct.new(:message, :date, :files)
   @@Spot = Struct.new(:file, :score)
 
-  def initialize(repo)
-    super(repo)
-    self.password = CGI::escape self.password
-  end
-
   def set_hooks()
-    hook_url = "#{$settings['address']}/api/#{self.org}/#{self.name}"
+    hook_url = URI.join $settings['address'], "/api/#{self.org}/#{self.name}"
 
     github = Github.new basic_auth: "#{self.login}:#{self.password}"
     hooks = github.repos.hooks.all self.org, self.name
@@ -40,8 +37,9 @@ class Repo < OpenStruct
     mkdir_p(repo_dir, mode: 0755)
 
     grit_repo = Grit::Git.new repo_dir
+    password = CGI::escape self.password
     process = grit_repo.clone({progress: true, process_info: true},
-      "https://#{self.login}:#{self.password}@github.com/#{self.org}/#{self.name}", repo_dir)
+      "https://#{self.login}:#{password}@github.com/#{self.org}/#{self.name}", repo_dir)
     print process[2]
 
     fixes = []

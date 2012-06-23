@@ -1,13 +1,10 @@
 require 'json'
-require 'CGI'
 
 require 'sinatra'
-require 'github_api'
-require 'debugger'
-require 'grit'
 require 'haml'
 
 require './repo'
+require 'debugger'
 
 $settings = {}
 repos = {}
@@ -22,7 +19,7 @@ configure do
   end
 
   repos.each do |name, repo|
-    #repo.set_hooks
+    repo.set_hooks
     repo.find_hotspots
   end
 end
