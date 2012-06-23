@@ -1,6 +1,6 @@
-#{repo}
+#{repo.name}
 %table
-  - hotspots.each do |spot|
+  - repo.spots.each do |spot|
     %tr
       %td=spot.score
       %td=spot.file

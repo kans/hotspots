@@ -1,3 +1,3 @@
-- all_hotspots.each do |org, value|
-  - value.each do |repo, value|
-    %a{href:"/hotspots/#{org}/#{repo}"} "#{org}/#{repo}"
+
+- repos.each do |name, repo|
+    %a{href:"/hotspots/#{repo.org}/#{name}"} "#{repo.org}/#{name}"
