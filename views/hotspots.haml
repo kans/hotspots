@@ -1,7 +1,7 @@
 %a{href:'/'} Home
 #{repo.name}
 %table
-  - repo.spots.each do |spot|
+  - spots.each do |spot|
     %tr
       %td=spot.score
       %td=spot.file

@@ -15,14 +15,14 @@ configure do
 
   settings_repos.each do |repo|
     repo = Repo.new(repo)
-    repos[repo.org] = {} unless repos.has_key?(repo.org)
+    repos[repo.org] ||= {}
     repos[repo.org][repo.name] = repo
   end
 
   repos.each do |org, org_repos|
     org_repos.each do |name, repo|
       repo.set_hooks
-      repo.spots = repo.find_hotspots
+      repo.spots = repo.get_hotspots
     end
   end
 end
@@ -40,7 +40,8 @@ post "/api/:org/:name" do
     repo = repos[org][name]
     sha = data['head']['sha']
     puts sha
-    repo.find_hotspots(sha)
+    hotspots = repo.get_hotspots(sha: sha)
+    puts hotspots
   rescue Exception => e
     puts e
   ensure
@@ -48,8 +49,11 @@ post "/api/:org/:name" do
   end
 end
 
-get "/hotspots/:org/:name" do |org, name|
-  haml :hotspots, locals:{ :repo => repos[name] }
+
+get "/hotspots/:org/:name/?:sha?" do |org, name, sha|
+  repo = repos[org][name]
+  spots = repo.get_hotspots('master', sha: sha)
+  haml :hotspots, locals:{ :repo => repo, :spots => spots }
 end
 
 get '/' do

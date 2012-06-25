@@ -30,11 +30,13 @@ class Repo < OpenStruct
     self.pull()
   end
 
+
   def pull()
     grit_repo = Grit::Repo.new self.dir
     process = grit_repo.git.pull({progress: true, process_info: true}, self.dir)
     print process[2]
   end
+
 
   def set_hooks()
     puts "Setting hooks for #{self.full_name}"
@@ -55,14 +57,16 @@ class Repo < OpenStruct
       {url: hook_url, content_type: "json"}
   end
 
-  def find_hotspots(branch='master')
+
+  def get_hotspots(branch='master', sha=nil)
     puts "Finding hotspots for #{self.full_name} #{branch}"
     regex = /fix(es|ed)?|close(s|d)?/i
-
-    fixes = []
+    puts sha
     grit_repo = Grit::Repo.new self.dir
     tree = grit_repo.tree(branch)
     commit_list = grit_repo.git.rev_list({:max_count => false, :no_merges => true, :pretty => "raw", :timeout => false}, branch)
+    fixes = []
+
     Grit::Commit.list_from_string(grit_repo, commit_list).each do |commit|
       if commit.message =~ regex
         # TODO: what does this line do?
@@ -83,6 +87,7 @@ class Repo < OpenStruct
       @@Spot.new(spot.first, sprintf('%.4f', spot.last))
     end
 
+    puts spots
     return spots
   end
 end
