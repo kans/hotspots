@@ -11,6 +11,10 @@ class Repo < OpenStruct
   @@Fix = Struct.new(:message, :date, :files)
   @@Spot = Struct.new(:file, :score)
 
+  def full_name()
+    return "#{self.org}/#{self.name}"
+  end
+
   def initialize(repo)
     super(repo)
     self.dir = File.join($settings['repo_dir'], "#{self.org}/#{self.name}")
@@ -24,6 +28,7 @@ class Repo < OpenStruct
   end
 
   def set_hooks()
+    puts "Setting hooks for #{self.full_name}"
     hook_url = URI.join $settings['address'], "/api/#{self.org}/#{self.name}"
 
     github = Github.new basic_auth: "#{self.login}:#{self.password}"
@@ -42,6 +47,7 @@ class Repo < OpenStruct
   end
 
   def find_hotspots(branch='master')
+    puts "Finding hotspots for #{self.full_name} #{branch}"
     regex = /fix(es|ed)?|close(s|d)?/i
 
     fixes = []
@@ -68,7 +74,6 @@ class Repo < OpenStruct
       @@Spot.new(spot.first, sprintf('%.4f', spot.last))
     end
 
-    self.spots = spots
+    return spots
   end
-  
 end
