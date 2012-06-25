@@ -17,6 +17,7 @@ class Repo < OpenStruct
 
   def initialize(repo)
     super(repo)
+    self.spots = nil
     self.dir = File.join($settings['repo_dir'], "#{self.org}/#{self.name}")
     mkdir_p(self.dir, mode: 0755)
 
