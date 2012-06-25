@@ -31,21 +31,15 @@ end
 post "/api/:org/:name" do
   begin
     data = JSON.parse request.body.read
-    org = "racker"
-    name = "gutsy"
-=begin
     action = data['action']
     unless action == 'opened'
       return
     end
     org = params[:org]
     name = params[:name]
-=end
     repo = repos[org][name]
-#    sha = data['head']['sha']
-    sha = 'f0a33edde4c28ee29134a627e590abd6b1296f59'
+    sha = data['head']['sha']
     puts sha
-    debugger
     repo.find_hotspots(sha)
   rescue Exception => e
     puts e
