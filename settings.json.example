@@ -1,7 +1,12 @@
 {
-  "login": "username",
-  "password": "password1234",
-  "org": "organization",
-  "repo": "project_name",
-  "address": "http://example.com/"
+  "repo_dir": "../repos",
+  "address": "http://example.com/",
+  "repos": [
+    {
+      "login": "github_username",
+      "org": "github_org_name",
+      "password": "password!1234",
+      "name": "project_name"
+    }
+  ]
 }
