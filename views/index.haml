@@ -1,3 +1,4 @@
 
-- repos.each do |name, repo|
+- repos.each do |org_name, org|
+  -org.each do |name, repo|
     %a{href:"/hotspots/#{repo.org}/#{name}"} #{repo.org}/#{name}
