@@ -18,13 +18,21 @@ class Repo < OpenStruct
   def initialize(repo)
     super(repo)
     self.spots = nil
-    self.dir = File.join($settings['repo_dir'], "#{self.org}/#{self.name}")
+    self.dir = File.expand_path("#{$settings['repo_dir']}/#{self.org}/#{self.name}")
+    puts self.dir
     mkdir_p(self.dir, mode: 0755)
 
     grit_repo = Grit::Git.new self.dir
     password = CGI::escape self.password
-    process = grit_repo.clone({progress: true, process_info: true},
+    process = grit_repo.clone({progress: true, process_info: true, timeout: 30},
       "https://#{self.login}:#{password}@github.com/#{self.org}/#{self.name}", self.dir)
+    print process[2]
+    self.pull()
+  end
+
+  def pull()
+    grit_repo = Grit::Repo.new self.dir
+    process = grit_repo.git.pull({progress: true, process_info: true}, self.dir)
     print process[2]
   end
 
