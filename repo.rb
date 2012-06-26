@@ -4,11 +4,13 @@ require 'uri'
 require 'debugger'
 require 'grit'
 require 'github_api'
+require './db'
 
 include FileUtils
 
 class Repo < OpenStruct
   @@Spot = Struct.new(:file, :score)
+  @@Fix = Struct.new(:date, :sha, :file)
 
   def full_name()
     return "#{self.org}/#{self.name}"
@@ -66,39 +68,16 @@ class Repo < OpenStruct
     opts = {:max_count => false, :no_merges => true, :pretty => "raw", :timeout => false}
 
     commit_list = grit_repo.git.rev_list(opts, 'master')
-    
-    id = $db.get_first_value "SELECT id FROM projects WHERE org=? and repo=?;", self.org, self.name 
-    puts id
-    query = "INSERT INTO events "
-    args = []
-
-    first_time = true
+    fixes = []
     Grit::Commit.list_from_string(grit_repo, commit_list).each do |commit|
       if commit.message =~ regex
-        puts commit.message
         # TODO: what does this line do - ANSWER: search the tree to get blobs, not dirs
         commit.stats.files.map {|s| s.first}.select{ |s| tree/s }.each do |file|
-          if first_time
-            query << " SELECT ? AS 'project_id', ? AS 'sha', ? AS 'time', ? AS 'path' "
-            first_time = false
-          else
-            query << " UNION SELECT ?, ?, ?, ? "
-          end
-          args += [id, commit.sha, commit.date.to_s, file]
-          if args.length >900
-            debugger;
-            $db.execute query, args
-            args=[]
-            query = "INSERT INTO events "
-            first_time = true
-          end
+          fixes << @@Fix.new(commit.date.to_s, commit.sha, file)
         end
       end
     end
-    debugger;
-    unless args.empty?
-      $db.execute query, args
-    end
+    DB::add_events fixes, self.org, self.name
   end
 
   def get_hotspots(sha=nil)
