@@ -8,7 +8,6 @@ require 'github_api'
 include FileUtils
 
 class Repo < OpenStruct
-  @@Fix = Struct.new(:message, :date, :files)
   @@Spot = Struct.new(:file, :score)
 
   def full_name()
@@ -54,67 +53,85 @@ class Repo < OpenStruct
       github.repos.hooks.delete self.org, self.name, hook.id
     end
     github.repos.hooks.create self.org, self.name, name: "web", active: true, config:
-      {url: hook_url, content_type: "json"}
+    {url: hook_url, content_type: "json"}
   end
 
 
   def set_hotspots()
-    puts "Finding hotspots for #{self.full_name} #{branch}"
+    puts 'setting spots for ' + self.name
     regex = /fix(es|ed)?|close(s|d)?/i
     grit_repo = Grit::Repo.new self.dir
     tree = grit_repo.tree("master")
-    fixes = []
+
     opts = {:max_count => false, :no_merges => true, :pretty => "raw", :timeout => false}
 
-    commit_list = grit_repo.git.rev_list(opts, branch)
-    puts commit_list
+    commit_list = grit_repo.git.rev_list(opts, 'master')
+    
+    id = $db.get_first_value "SELECT id FROM projects WHERE org=? and repo=?;", self.org, self.name 
+    puts id
+    query = "INSERT INTO events "
+    args = []
 
+    first_time = true
     Grit::Commit.list_from_string(grit_repo, commit_list).each do |commit|
       if commit.message =~ regex
-        # TODO: what does this line do?
-        files = commit.stats.files.map {|s| s.first}.select{ |s| tree/s }
-        fixes << @@Fix.new(commit.short_message, commit.date, files)
+        puts commit.message
+        # TODO: what does this line do - ANSWER: search the tree to get blobs, not dirs
+        commit.stats.files.map {|s| s.first}.select{ |s| tree/s }.each do |file|
+          if first_time
+            query << " SELECT ? AS 'project_id', ? AS 'sha', ? AS 'time', ? AS 'path' "
+            first_time = false
+          else
+            query << " UNION SELECT ?, ?, ?, ? "
+          end
+          args += [id, commit.sha, commit.date.to_s, file]
+          if args.length >900
+            debugger;
+            $db.execute query, args
+            args=[]
+            query = "INSERT INTO events "
+            first_time = true
+          end
+        end
       end
     end
-
-    now = Time.now
-    hotspots = Hash.new(0)
-    fixes.each do |fix|
-      t = 1 - ((now - fix.date).to_f / (now - fixes.last.date))
-      fix.files.each do |file|
-        hotspots[file] += 1/(1+Math.exp((-12*t)+12))
-      end
+    debugger;
+    unless args.empty?
+      $db.execute query, args
     end
-
-    hotspots.sort_by {|k,v| v}.reverse!
-    puts hotspots
-    self.hotspots = hotspots
   end
-
 
   def get_hotspots(sha=nil)
     opts = {:max_count => false, :no_merges => true, :pretty => "raw", :timeout => false}
     grit_repo = Grit::Repo.new self.dir
     tree = grit_repo.tree("master")
-    sha ||= grit_repo.commits.first.id
     files = Set.new
-    commit_list = grit_repo.git.rev_list(opts, sha, "^master")
-    Grit::Commit.list_from_string(grit_repo, commit_list).each do |commit|
-      files.add(commit.stats.files.map {|s| s.first}.select{ |s| tree/s })
-    end
-
-    hotspots = Hash.new(0)
     debugger
-    files.each do |file|
-      hotspots[file] = self.hotspots[file]
-      puts file
+    if sha
+      commit_list = grit_repo.git.rev_list(opts, sha, "^master")
+      Grit::Commit.list_from_string(grit_repo, commit_list).each do |commit|
+        files.add(commit.stats.files.map {|s| s.first}.select{ |s| tree/s })
+      end
+      hotspots = Hash.new(0)
+      debugger
+      files.each do |file|
+        hotspots[file] = self.hotspots[file]
+        puts file
+      end
+    else
+      hotspots = self.hotspots
     end
 
     spots = hotspots.collect do |spot|
       @@Spot.new(spot.first, sprintf('%.4f', spot.last))
     end
+    t = 1 - ((now - fix.date).to_f / (now - fixes.last.date))
+    fix.files.each do |file|
+      hotspots[file] += 1/(1+Math.exp((-12*t)+12))
+    end
     debugger
-    put spots
+    hotspots.sort_by {|k,v| v}.reverse!
+    self.hotspots = hotspots
     return spots
   end
 end
