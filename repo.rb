@@ -17,7 +17,7 @@ class Repo < OpenStruct
 
   def initialize(repo)
     super(repo)
-    self.spots = nil
+    self.hotspots = Hash.new(0)
     self.dir = File.expand_path("#{$settings['repo_dir']}/#{self.org}/#{self.name}")
     puts self.dir
     mkdir_p(self.dir, mode: 0755)
@@ -58,14 +58,16 @@ class Repo < OpenStruct
   end
 
 
-  def get_hotspots(branch='master', sha=nil)
+  def set_hotspots()
     puts "Finding hotspots for #{self.full_name} #{branch}"
     regex = /fix(es|ed)?|close(s|d)?/i
-    puts sha
     grit_repo = Grit::Repo.new self.dir
-    tree = grit_repo.tree(branch)
-    commit_list = grit_repo.git.rev_list({:max_count => false, :no_merges => true, :pretty => "raw", :timeout => false}, branch)
+    tree = grit_repo.tree("master")
     fixes = []
+    opts = {:max_count => false, :no_merges => true, :pretty => "raw", :timeout => false}
+
+    commit_list = grit_repo.git.rev_list(opts, branch)
+    puts commit_list
 
     Grit::Commit.list_from_string(grit_repo, commit_list).each do |commit|
       if commit.message =~ regex
@@ -75,19 +77,44 @@ class Repo < OpenStruct
       end
     end
 
+    now = Time.now
     hotspots = Hash.new(0)
     fixes.each do |fix|
+      t = 1 - ((now - fix.date).to_f / (now - fixes.last.date))
       fix.files.each do |file|
-        t = 1 - ((Time.now - fix.date).to_f / (Time.now - fixes.last.date))
         hotspots[file] += 1/(1+Math.exp((-12*t)+12))
       end
     end
 
-    spots = hotspots.sort_by {|k,v| v}.reverse.collect do |spot|
-      @@Spot.new(spot.first, sprintf('%.4f', spot.last))
+    hotspots.sort_by {|k,v| v}.reverse!
+    puts hotspots
+    self.hotspots = hotspots
+  end
+
+
+  def get_hotspots(sha=nil)
+    opts = {:max_count => false, :no_merges => true, :pretty => "raw", :timeout => false}
+    grit_repo = Grit::Repo.new self.dir
+    tree = grit_repo.tree("master")
+    sha ||= grit_repo.commits.first.id
+    files = Set.new
+    commit_list = grit_repo.git.rev_list(opts, sha, "^master")
+    Grit::Commit.list_from_string(grit_repo, commit_list).each do |commit|
+      files.add(commit.stats.files.map {|s| s.first}.select{ |s| tree/s })
     end
 
-    puts spots
+    hotspots = Hash.new(0)
+    debugger
+    files.each do |file|
+      hotspots[file] = self.hotspots[file]
+      puts file
+    end
+
+    spots = hotspots.collect do |spot|
+      @@Spot.new(spot.first, sprintf('%.4f', spot.last))
+    end
+    debugger
+    put spots
     return spots
   end
 end

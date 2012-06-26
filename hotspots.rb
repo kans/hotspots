@@ -22,7 +22,7 @@ configure do
   repos.each do |org, org_repos|
     org_repos.each do |name, repo|
       repo.set_hooks
-      repo.spots = repo.get_hotspots
+      repo.set_hotspots
     end
   end
 end
@@ -52,7 +52,7 @@ end
 
 get "/hotspots/:org/:name/?:sha?" do |org, name, sha|
   repo = repos[org][name]
-  spots = repo.get_hotspots('master', sha: sha)
+  spots = repo.get_hotspots(sha)
   haml :hotspots, locals:{ :repo => repo, :spots => spots }
 end
 
