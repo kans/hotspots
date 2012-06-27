@@ -70,7 +70,6 @@ class Repo < OpenStruct
     end
     args << 'master'
     commit_list = grit_repo.git.rev_list(@@opts, args)
-    debugger
     fixes = []
     Grit::Commit.list_from_string(grit_repo, commit_list).each do |commit|
       if commit.message =~ regex
