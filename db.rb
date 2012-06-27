@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS projects (
   id INTEGER PRIMARY KEY NOT NULL,
   org VARCHAR(40) NOT NULL,
   repo VARCHAR(40) NOT NULL,
-  head VARCHAR(40) NOT NULL,
+  last_sha VARCHAR(40),
   UNIQUE(repo, org)
 );"
 
@@ -23,12 +23,15 @@ CREATE TABLE IF NOT EXISTS events (
 module DB
   def DB.create_project(repo)
     begin
-      $db.execute "INSERT INTO PROJECTS (org, repo, head) VALUES(?, ?, ?);", repo.org, repo.name, ""
+      $db.execute "INSERT INTO PROJECTS (org, repo, last_sha) VALUES(?, ?, ?);", repo.org, repo.name, nil
     rescue SQLite3::ConstraintException
     end
   end
-  def DB.add_events(fixes, org, name)
-    id = $db.get_first_value "SELECT id FROM projects WHERE org=? and repo=?;", org, name 
+  def DB.get_last_sha(repo)
+    $db.get_first_value "SELECT last_sha FROM projects WHERE org=? and repo=?;", repo.org, repo.name
+  end
+  def DB.add_events(fixes, org, name, last_sha)
+    id = $db.get_first_value "SELECT id FROM projects WHERE org=? and repo=?;", org, name
     query = "INSERT INTO events "
     args = []
     first_time = true
@@ -58,5 +61,6 @@ module DB
         puts e
       end
     end
+    $db.execute "UPDATE projects SET last_sha=? where id =?;", last_sha, id
   end
 end

@@ -22,7 +22,7 @@ configure do
     org_repos.each do |name, repo|
       DB::create_project repo
       repo.set_hooks
-      repo.set_hotspots
+      repo.add_events
     end
   end
 end

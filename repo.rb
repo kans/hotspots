@@ -11,6 +11,7 @@ include FileUtils
 class Repo < OpenStruct
   @@Spot = Struct.new(:file, :score)
   @@Fix = Struct.new(:date, :sha, :file)
+  @@opts = {:max_count => false, :no_merges => true, :pretty => "raw", :timeout => false}
 
   def full_name()
     return "#{self.org}/#{self.name}"
@@ -31,13 +32,11 @@ class Repo < OpenStruct
     self.pull()
   end
 
-
   def pull()
     grit_repo = Grit::Repo.new self.dir
     process = grit_repo.git.pull({progress: true, process_info: true}, self.dir)
     print process[2]
   end
-
 
   def set_hooks()
     puts "Setting hooks for #{self.full_name}"
@@ -59,15 +58,19 @@ class Repo < OpenStruct
   end
 
 
-  def set_hotspots()
+  def add_events()
     puts 'setting spots for ' + self.name
     regex = /fix(es|ed)?|close(s|d)?/i
     grit_repo = Grit::Repo.new self.dir
     tree = grit_repo.tree("master")
-
-    opts = {:max_count => false, :no_merges => true, :pretty => "raw", :timeout => false}
-
-    commit_list = grit_repo.git.rev_list(opts, 'master')
+    last_sha = DB::get_last_sha self
+    args = []
+    if last_sha
+      args << "^#{last_sha}"
+    end
+    args << 'master'
+    commit_list = grit_repo.git.rev_list(@@opts, args)
+    debugger
     fixes = []
     Grit::Commit.list_from_string(grit_repo, commit_list).each do |commit|
       if commit.message =~ regex
@@ -77,17 +80,15 @@ class Repo < OpenStruct
         end
       end
     end
-    DB::add_events fixes, self.org, self.name
+    DB::add_events fixes, self.org, self.name, grit_repo.head.commit.sha
   end
 
   def get_hotspots(sha=nil)
-    opts = {:max_count => false, :no_merges => true, :pretty => "raw", :timeout => false}
     grit_repo = Grit::Repo.new self.dir
     tree = grit_repo.tree("master")
     files = Set.new
-    debugger
     if sha
-      commit_list = grit_repo.git.rev_list(opts, sha, "^master")
+      commit_list = grit_repo.git.rev_list(@@opts, sha, "^master")
       Grit::Commit.list_from_string(grit_repo, commit_list).each do |commit|
         files.add(commit.stats.files.map {|s| s.first}.select{ |s| tree/s })
       end
