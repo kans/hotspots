@@ -30,6 +30,7 @@ class Repo < OpenStruct
       "https://#{self.login}:#{password}@github.com/#{self.org}/#{self.name}", self.dir)
     print process[2]
     self.pull()
+    self.id = DB::create_project self
   end
 
   def pull()
@@ -57,7 +58,6 @@ class Repo < OpenStruct
     {url: hook_url, content_type: "json"}
   end
 
-
   def add_events()
     puts 'setting spots for ' + self.name
     regex = /fix(es|ed)?|close(s|d)?/i
@@ -79,26 +79,27 @@ class Repo < OpenStruct
         end
       end
     end
-    DB::add_events fixes, self.org, self.name, grit_repo.head.commit.sha
+    DB::add_events fixes, grit_repo.head.commit.sha, self.id
   end
 
-  def get_hotspots(sha=nil)
+  def get_hotspots
+    DB::get_events self
+  end
+  
+  def get_hotspots_for_sha(sha)
     grit_repo = Grit::Repo.new self.dir
     tree = grit_repo.tree("master")
     files = Set.new
-    if sha
-      commit_list = grit_repo.git.rev_list(@@opts, sha, "^master")
-      Grit::Commit.list_from_string(grit_repo, commit_list).each do |commit|
-        files.add(commit.stats.files.map {|s| s.first}.select{ |s| tree/s })
-      end
-      hotspots = Hash.new(0)
-      debugger
-      files.each do |file|
-        hotspots[file] = self.hotspots[file]
-        puts file
-      end
-    else
-      hotspots = self.hotspots
+
+    commit_list = grit_repo.git.rev_list(@@opts, sha, "^master")
+    Grit::Commit.list_from_string(grit_repo, commit_list).each do |commit|
+      files.add(commit.stats.files.map {|s| s.first}.select{ |s| tree/s })
+    end
+    hotspots = Hash.new(0)
+    debugger
+    files.each do |file|
+      hotspots[file] = self.hotspots[file]
+      puts file
     end
 
     spots = hotspots.collect do |spot|

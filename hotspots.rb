@@ -20,7 +20,6 @@ configure do
   end
   repos.each do |org, org_repos|
     org_repos.each do |name, repo|
-      DB::create_project repo
       repo.set_hooks
       repo.add_events
     end

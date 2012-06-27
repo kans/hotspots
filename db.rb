@@ -25,13 +25,16 @@ module DB
     begin
       $db.execute "INSERT INTO PROJECTS (org, repo, last_sha) VALUES(?, ?, ?);", repo.org, repo.name, nil
     rescue SQLite3::ConstraintException
+    ensure
+      $db.get_first_value "SELECT id FROM projects WHERE org=? and repo=?;", repo.org, repo.name
     end
   end
-  def DB.get_last_sha(repo)
-    $db.get_first_value "SELECT last_sha FROM projects WHERE org=? and repo=?;", repo.org, repo.name
+
+  def DB.get_last_sha(project_id)
+    $db.get_first_value "SELECT last_sha FROM projects WHERE id=?;", project_id
   end
-  def DB.add_events(fixes, org, name, last_sha)
-    id = $db.get_first_value "SELECT id FROM projects WHERE org=? and repo=?;", org, name
+
+  def DB.add_events(fixes, last_sha, project_id)
     query = "INSERT INTO events "
     args = []
     first_time = true
@@ -42,7 +45,7 @@ module DB
       else
         query << " UNION SELECT ?, ?, ?, ? "
       end
-      args += [id, fix.sha, fix.date, fix.file]
+      args += [project_id, fix.sha, fix.date, fix.file]
       if args.length >900
         begin
           $db.execute query, args
@@ -61,6 +64,10 @@ module DB
         puts e
       end
     end
-    $db.execute "UPDATE projects SET last_sha=? where id =?;", last_sha, id
+    $db.execute "UPDATE projects SET last_sha=? WHERE id =?;", last_sha, project_id
+  end
+
+  def DB.get_events (project_id)
+   $db.query "SELECT * FROM events WHERE project_id=?", project_id
   end
 end
