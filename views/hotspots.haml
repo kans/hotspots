@@ -1,10 +1,10 @@
 %a{href:'/'} Home
 #{repo.name}
+%h1=total
 %table
-	- a = 0
-	- spots.each do |file,score|
-		- a += score
-		%tr
-			%td=score
-			%td=file
-	%h1=a
+  - a = 0
+  - spots.each do |file,score|
+    - a += score
+    %tr
+      %td=score
+      %td=file
