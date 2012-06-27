@@ -35,13 +35,14 @@ module DB
     $db.get_first_value "SELECT last_sha FROM projects WHERE id=?;", project_id
   end
 
-  def DB.multiple_insert(table, cols, values)
+  def DB.multiple_insert(table, values)
     args = []
+    cols = []
+    values[0].each_pair{|k,v| cols.push k}
     escape_string = (["?"] * cols.length).join ','
     query = "INSERT INTO #{table} (#{cols.join ','}) "
     first_time = true
-    debugger
-    unless values.empty?
+    while not values.empty?
       if first_time
         first_time = false
       else
@@ -49,8 +50,8 @@ module DB
       end
       query << " SELECT #{escape_string} "
       args += values.shift.to_a
-      if args.length - cols.length <= 999
-        multiple_insert table, cols, values
+      if args.length >= 999 - cols.length
+        multiple_insert table, values
       end
     end
     unless args.empty?
@@ -63,38 +64,8 @@ module DB
   end
 
   def DB.add_events(fixes, last_sha, project_id)
-    self.multiple_insert 'events', ['project_id', 'sha', 'date', 'file'], fixes
-    # args = []
-    # first_time = true
-
-    # query = "INSERT INTO events (project_id, sha, time, path) "
-    # fixes.each do |fix|
-    #   if first_time
-    #     first_time = false
-    #   else
-    #     query << " UNION "
-    #   end
-    #   query << " SELECT ?, ?, ?, ? "
-    #   args += [project_id, fix.sha, fix.date, fix.file]
-    #   if args.length >900
-    #     begin
-    #       $db.execute query, args
-    #     rescue SQLite3::ConstraintException => e 
-    #       puts e
-    #     end
-    #     args=[]
-    #     query = "INSERT INTO events (project_id, sha, time, path) "
-    #     first_time = true
-    #   end
-    # end
-    # unless args.empty?
-    #   begin
-    #     $db.execute query, args
-    #   rescue SQLite3::ConstraintException => e 
-    #     puts e
-    #   end
-    # end
-    # $db.execute "UPDATE projects SET last_sha=? WHERE id =?;", last_sha, project_id
+    self.multiple_insert 'events', fixes
+    $db.execute "UPDATE projects SET last_sha=? WHERE id =?;", last_sha, project_id
   end
 
   def DB.get_events (project_id)
