@@ -87,16 +87,15 @@ class Repo < OpenStruct
   end
 
   def get_hotspots
-    hotspots = Hash.new
+    hotspots = Hash.new 0
     now = Time.now
     events = DB::get_events self.id
     events.each do |event|
-      debugger;
-      t = 1 - ((now - fix.date).to_f / (now - fixes.last.date))
-      fix.files.each do |file|
-        hotspots[file] += 1/(1+Math.exp((-12*t)+12))
-      end
+      t = 1 - ((now - Time.new(event.date)).to_f / (now - Time.new(events.last.date)))
+      hotspots[event.file] += 1/(1+Math.exp((-12*t)+12))
     end
+    hotspots.sort_by {|files,score| -score}
+    hotspots
   end
 
   def get_hotspots_for_sha(sha)
