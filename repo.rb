@@ -94,8 +94,7 @@ class Repo < OpenStruct
       t = 1 - ((now - Time.new(event.date)).to_f / (now - Time.new(events.last.date)))
       hotspots[event.file] += 1/(1+Math.exp((-12*t)+12))
     end
-    hotspots.sort_by {|files,score| -score}
-    hotspots
+    hotspots.sort_by {|k, v| -v }
   end
 
   def get_hotspots_for_sha(sha)
@@ -118,7 +117,7 @@ class Repo < OpenStruct
       hotspots[file] += 1/(1+Math.exp((-12*t)+12))
     end
     debugger
-    hotspots.sort_by {|k,v| v}.reverse!
+    hotspots.sort_by! {|k,v| v}.reverse!
     self.hotspots = hotspots
     return spots
   end
