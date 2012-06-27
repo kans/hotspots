@@ -51,7 +51,7 @@ end
 
 get "/hotspots/:org/:name/?:sha?" do |org, name, sha|
   repo = repos[org][name]
-  spots = repo.get_hotspots(sha)
+  spots = repo.get_hotspots
   haml :hotspots, locals:{ :repo => repo, :spots => spots }
 end
 

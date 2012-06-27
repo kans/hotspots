@@ -10,7 +10,7 @@ include FileUtils
 
 class Repo < OpenStruct
   @@Spot = Struct.new(:file, :score)
-  @@Fix = Struct.new(:date, :sha, :file)
+  @@Fix = Struct.new(:project_id, :date, :sha, :file)
   @@opts = {:max_count => false, :no_merges => true, :pretty => "raw", :timeout => false}
 
   def full_name()
@@ -21,21 +21,20 @@ class Repo < OpenStruct
     super(repo)
     self.hotspots = Hash.new(0)
     self.dir = File.expand_path("#{$settings['repo_dir']}/#{self.org}/#{self.name}")
-    puts self.dir
     mkdir_p(self.dir, mode: 0755)
+    self.grit_git = Grit::Git.new self.dir
+    self.grit_repo = Grit::Repo.new self.dir
 
-    grit_repo = Grit::Git.new self.dir
     password = CGI::escape self.password
-    process = grit_repo.clone({progress: true, process_info: true, timeout: 30},
+    process = self.grit_git.clone({progress: true, process_info: true, timeout: 30},
       "https://#{self.login}:#{password}@github.com/#{self.org}/#{self.name}", self.dir)
     print process[2]
     self.pull()
     self.id = DB::create_project self
   end
 
-  def pull()
-    grit_repo = Grit::Repo.new self.dir
-    process = grit_repo.git.pull({progress: true, process_info: true}, self.dir)
+  def pull
+    process = self.grit_repo.git.pull({progress: true, process_info: true}, self.dir)
     print process[2]
   end
 
@@ -58,43 +57,53 @@ class Repo < OpenStruct
     {url: hook_url, content_type: "json"}
   end
 
+  def get_fixes_from_commits(commit_list)
+    fixes = []
+    regex = /fix(es|ed)?|close(s|d)?/i
+    tree = self.grit_repo.tree("master")
+    Grit::Commit.list_from_string(self.grit_repo, commit_list).each do |commit|
+      if commit.message =~ regex
+        # TODO: what does this line do - ANSWER: search the tree to get blobs, not dirs
+        commit.stats.files.map {|s| s.first}.select{ |s| tree/s }.each do |file|
+          fixes << @@Fix.new(self.id, commit.date.to_s, commit.sha, file)
+        end
+      end
+    end
+    return fixes
+  end
+
   def add_events()
     puts 'setting spots for ' + self.name
-    regex = /fix(es|ed)?|close(s|d)?/i
-    grit_repo = Grit::Repo.new self.dir
-    tree = grit_repo.tree("master")
-    last_sha = DB::get_last_sha self
+    last_sha = DB::get_last_sha self.id
     args = []
     if last_sha
       args << "^#{last_sha}"
     end
     args << 'master'
-    commit_list = grit_repo.git.rev_list(@@opts, args)
-    fixes = []
-    Grit::Commit.list_from_string(grit_repo, commit_list).each do |commit|
-      if commit.message =~ regex
-        # TODO: what does this line do - ANSWER: search the tree to get blobs, not dirs
-        commit.stats.files.map {|s| s.first}.select{ |s| tree/s }.each do |file|
-          fixes << @@Fix.new(commit.date.to_s, commit.sha, file)
-        end
-      end
-    end
-    DB::add_events fixes, grit_repo.head.commit.sha, self.id
+    commit_list = self.grit_repo.git.rev_list @@opts, args
+    fixes = self.get_fixes_from_commits commit_list
+    
+    DB::add_events fixes, self.grit_repo.head.commit.sha, self.id
   end
 
   def get_hotspots
-    DB::get_events self
+    hotspots = Hash.new
+    now = Time.now
+    events = DB::get_events self.id
+    events.each do |event|
+      debugger;
+      t = 1 - ((now - fix.date).to_f / (now - fixes.last.date))
+      fix.files.each do |file|
+        hotspots[file] += 1/(1+Math.exp((-12*t)+12))
+      end
+    end
   end
-  
+
   def get_hotspots_for_sha(sha)
-    grit_repo = Grit::Repo.new self.dir
-    tree = grit_repo.tree("master")
     files = Set.new
 
-    commit_list = grit_repo.git.rev_list(@@opts, sha, "^master")
-    Grit::Commit.list_from_string(grit_repo, commit_list).each do |commit|
-      files.add(commit.stats.files.map {|s| s.first}.select{ |s| tree/s })
-    end
+    commit_list = self.grit_repo.git.rev_list(@@opts, sha, "^master")
+    fixes = self.get_fixes_from_commits commit_list
     hotspots = Hash.new(0)
     debugger
     files.each do |file|

@@ -13,10 +13,10 @@ CREATE TABLE IF NOT EXISTS projects (
 $db.execute "
 CREATE TABLE IF NOT EXISTS events (
   project_id REFERENCES projects(id) NOT NULL,
-  time TIMESTAMP NOT NULL,
+  date TIMESTAMP NOT NULL,
   sha VARCHAR(40),
-  path TEXT NOT NULL,
-  UNIQUE(sha, path)
+  file TEXT NOT NULL,
+  UNIQUE(sha, file)
 );
 "
 
@@ -26,7 +26,8 @@ module DB
       $db.execute "INSERT INTO PROJECTS (org, repo, last_sha) VALUES(?, ?, ?);", repo.org, repo.name, nil
     rescue SQLite3::ConstraintException
     ensure
-      $db.get_first_value "SELECT id FROM projects WHERE org=? and repo=?;", repo.org, repo.name
+      id = $db.get_first_value "SELECT id FROM projects WHERE org=? and repo=?;", repo.org, repo.name
+      return id
     end
   end
 
@@ -34,27 +35,22 @@ module DB
     $db.get_first_value "SELECT last_sha FROM projects WHERE id=?;", project_id
   end
 
-  def DB.add_events(fixes, last_sha, project_id)
-    query = "INSERT INTO events "
+  def DB.multiple_insert(table, cols, values)
     args = []
+    escape_string = (["?"] * cols.length).join ','
+    query = "INSERT INTO #{table} (#{cols.join ','}) "
     first_time = true
-    fixes.each do |fix|
+    debugger
+    unless values.empty?
       if first_time
-        query << " SELECT ? AS 'project_id', ? AS 'sha', ? AS 'time', ? AS 'path' "
         first_time = false
       else
-        query << " UNION SELECT ?, ?, ?, ? "
+        query << " UNION "
       end
-      args += [project_id, fix.sha, fix.date, fix.file]
-      if args.length >900
-        begin
-          $db.execute query, args
-        rescue SQLite3::ConstraintException => e 
-          puts e
-        end
-        args=[]
-        query = "INSERT INTO events "
-        first_time = true
+      query << " SELECT #{escape_string} "
+      args += values.shift.to_a
+      if args.length - cols.length <= 999
+        multiple_insert table, cols, values
       end
     end
     unless args.empty?
@@ -64,10 +60,44 @@ module DB
         puts e
       end
     end
-    $db.execute "UPDATE projects SET last_sha=? WHERE id =?;", last_sha, project_id
+  end
+
+  def DB.add_events(fixes, last_sha, project_id)
+    self.multiple_insert 'events', ['project_id', 'sha', 'date', 'file'], fixes
+    # args = []
+    # first_time = true
+
+    # query = "INSERT INTO events (project_id, sha, time, path) "
+    # fixes.each do |fix|
+    #   if first_time
+    #     first_time = false
+    #   else
+    #     query << " UNION "
+    #   end
+    #   query << " SELECT ?, ?, ?, ? "
+    #   args += [project_id, fix.sha, fix.date, fix.file]
+    #   if args.length >900
+    #     begin
+    #       $db.execute query, args
+    #     rescue SQLite3::ConstraintException => e 
+    #       puts e
+    #     end
+    #     args=[]
+    #     query = "INSERT INTO events (project_id, sha, time, path) "
+    #     first_time = true
+    #   end
+    # end
+    # unless args.empty?
+    #   begin
+    #     $db.execute query, args
+    #   rescue SQLite3::ConstraintException => e 
+    #     puts e
+    #   end
+    # end
+    # $db.execute "UPDATE projects SET last_sha=? WHERE id =?;", last_sha, project_id
   end
 
   def DB.get_events (project_id)
-   $db.query "SELECT * FROM events WHERE project_id=?", project_id
+   return $db.query "SELECT date, sha, file FROM events WHERE project_id=?", project_id
   end
 end
