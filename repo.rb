@@ -72,7 +72,7 @@ class Repo < OpenStruct
     return fixes
   end
 
-  def add_events()
+  def add_events
     puts 'setting spots for ' + self.name
     last_sha = DB::get_last_sha self.id
     args = []
@@ -80,7 +80,7 @@ class Repo < OpenStruct
       args << "^#{last_sha}"
     end
     args << 'master'
-    commit_list = self.grit_repo.git.rev_list @@opts, args
+    commit_list = self.grit_repo.git.rev_list @@opts.dup, args
     fixes = self.get_fixes_from_commits commit_list
     
     DB::add_events fixes, self.grit_repo.head.commit.sha, self.id
@@ -94,13 +94,13 @@ class Repo < OpenStruct
       t = 1 - ((now - Time.new(event.date)).to_f / (now - Time.new(events.last.date)))
       hotspots[event.file] += 1/(1+Math.exp((-12*t)+12))
     end
-    hotspots.sort_by {|k, v| -v }
+    return hotspots
   end
 
   def get_hotspots_for_sha(sha)
     files = Set.new
 
-    commit_list = self.grit_repo.git.rev_list(@@opts, sha, "^master")
+    commit_list = self.grit_repo.git.rev_list(@@opts.dup, sha, "^master")
     fixes = self.get_fixes_from_commits commit_list
     hotspots = Hash.new(0)
     debugger
