@@ -9,7 +9,6 @@ require './db'
 include FileUtils
 
 class Repo < OpenStruct
-  @@Spot = Struct.new(:file, :score)
   @@Fix = Struct.new(:project_id, :date, :sha, :file)
   @@opts = {:max_count => false, :no_merges => true, :pretty => "raw", :timeout => false}
 
@@ -86,7 +85,8 @@ class Repo < OpenStruct
     DB::add_events fixes, self.grit_repo.head.commit.sha, self.id
   end
 
-  def get_hotspots(threshold = nil)
+  def get_hotspots()
+    # TODO: support sha
     hotspots = Hash.new 0
     now = Time.now
     events = DB::get_events self.id
@@ -102,18 +102,7 @@ class Repo < OpenStruct
     end
     hotspots = hotspots.sort_by {|k, v| -v }
 
-    return hotspots unless threshold
-    puts "threshold is #{threshold}"
-    total = 0
-    threshold_total = 0
-    hottest_spots = {}
-
-    hotspots.each { |file, score| total += score }
-    hotspots.each do |file, score|
-      hottest_spots[file] = score
-      threshold_total += score
-      return hottest_spots if threshold_total > threshold * total
-    end
+    return hotspots
   end
 
   def get_hotspots_for_sha(sha)
@@ -129,7 +118,7 @@ class Repo < OpenStruct
     end
 
     spots = hotspots.collect do |spot|
-      @@Spot.new(spot.first, sprintf('%.4f', spot.last))
+#      @@Spot.new(spot.first, sprintf('%.4f', spot.last))
     end
     t = 1 - ((now - fix.date).to_f / (now - fixes.last.date))
     fix.files.each do |file|
