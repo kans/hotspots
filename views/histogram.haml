@@ -1,6 +1,6 @@
 %a{href:'/'} Home
-
-- @spots.each_pair do |name, spots|
-	%h1=name
-	%img{:src=>histogram(spots)}
-
+- @repos.each do |org, org_repo|
+  - org_repo.each do |name, repo|
+    %h1=repo.name
+    - @repo = repo
+    %img{:src=>histogram(repo.get_hotspots)}

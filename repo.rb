@@ -33,7 +33,7 @@ class Repo < OpenStruct
     self.id = DB::create_project self
   end
 
-  def pull
+  def pull()
     process = self.grit_repo.git.pull({progress: true, process_info: true}, self.dir)
     print process[2]
   end
@@ -72,7 +72,7 @@ class Repo < OpenStruct
     return fixes
   end
 
-  def add_events
+  def add_events()
     puts 'setting spots for ' + self.name
     last_sha = DB::get_last_sha self.id
     args = []
@@ -86,7 +86,7 @@ class Repo < OpenStruct
     DB::add_events fixes, self.grit_repo.head.commit.sha, self.id
   end
 
-  def get_hotspots
+  def get_hotspots(threshold = nil)
     hotspots = Hash.new 0
     now = Time.now
     events = DB::get_events self.id
@@ -102,6 +102,18 @@ class Repo < OpenStruct
     end
     hotspots = hotspots.sort_by {|k, v| -v }
 
+    return hotspots unless threshold
+    puts "threshold is #{threshold}"
+    total = 0
+    threshold_total = 0
+    hottest_spots = {}
+
+    hotspots.each { |file, score| total += score }
+    hotspots.each do |file, score|
+      hottest_spots[file] = score
+      threshold_total += score
+      return hottest_spots if threshold_total > threshold * total
+    end
   end
 
   def get_hotspots_for_sha(sha)

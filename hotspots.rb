@@ -29,6 +29,7 @@ end
 
 helpers do
   def histogram(hotspots)
+    hotspots = hotspots.dup
     spots = hotspots.map {|spot| spot.last}
     lc = GoogleChart::LineChart.new("500x500", "histogram", false)
     lc.data "Line green", spots, '00ff00'
@@ -51,7 +52,7 @@ post "/api/:org/:name" do
     repo = repos[org][name]
     sha = data['head']['sha']
     puts sha
-    hotspots = repo.get_hotspots(sha: sha)
+    hotspots = repo.get_hotspots_for_sha(sha: sha)
     puts hotspots
   rescue Exception => e
     puts e
@@ -62,23 +63,21 @@ end
 
 
 get "/hotspots/:org/:name/?:sha?" do |org, name, sha|
+  threshold = params[:threshold].to_f
   @total = 0
   @repo = repos[org][name]
+  @spots = @repo.get_hotspots threshold
 
-  spots = @repo.get_hotspots
   haml :hotspots
 end
+
 
 get '/' do
   haml :index, locals:{ :repos => repos }
 end
 
+
 get '/histogram' do 
-  @spots = Hash.new
-  repos.each do |org, org_repo| 
-    org_repo.each do |name, repo|
-      @spots[repo.name] = repo.get_hotspots
-    end
-  end
+  @repos = repos
   haml :histogram 
 end
