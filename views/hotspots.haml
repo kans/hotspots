@@ -1,11 +1,14 @@
+- stats = make_stats(@spots, @threshold)
 %a{href:'/'} Home
 #{@repo.name}
 %img{:src=>histogram(@spots)}
-%h1=@total
+%h1=stats.danger_zone.length
+%h1 #{sprintf('%.2f', stats.danger_percent * 100)}%
+%h1=stats.hotspots.length
 %table
   - a = 0
   - @spots.each do |file,score|
     - a += score
     %tr
-      %td=score
+      %td #{sprintf('%.2f',score * 100)}%
       %td=file
