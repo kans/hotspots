@@ -90,8 +90,9 @@ class Repo < OpenStruct
     hotspots = Hash.new 0
     now = Time.now
     events = DB::get_events self.id
+    denom = now - Time.parse(events.last.date)
     events.each do |event|
-      t = 1 - ((now - Time.parse(event.date)).to_f / (now - Time.parse(events.last.date)))
+      t = 1 - ((now - Time.parse(event.date)).to_f / denom )
       hotspots[event.file] += 1/(1+Math.exp((-12*t)+12))
     end
     return hotspots
