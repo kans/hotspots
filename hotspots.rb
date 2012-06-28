@@ -28,7 +28,7 @@ configure do
 end
 
 helpers do
-  @@Stats = Struct.new(:hotspots, :danger_zone, :danger_percent)
+  Stats = Struct.new(:hotspots, :danger_zone, :danger_percent)
 
   def histogram(hotspots)
     hotspots = hotspots.dup
@@ -52,7 +52,7 @@ helpers do
       threshold_total += score
       break if threshold_total >= threshold * danger_total
     end
-    return @@Stats.new(hotspots, hottest_spots, hottest_spots.length/hotspots.length.to_f)
+    return Stats.new(hotspots, hottest_spots, hottest_spots.length/hotspots.length.to_f)
   end
 end
 
