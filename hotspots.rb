@@ -50,9 +50,14 @@ end
 
 
 get "/hotspots/:org/:name/?:sha?" do |org, name, sha|
+  total = 0
   repo = repos[org][name]
+
   spots = repo.get_hotspots
-  haml :hotspots, locals:{ :repo => repo, :spots => spots }
+
+  spots.each { |file, score| total += score }
+  spots = spots.sort_by {|k, v| -v }
+  haml :hotspots, locals:{ :repo => repo, :spots => spots, :total => total }
 end
 
 get '/' do
