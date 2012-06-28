@@ -28,6 +28,8 @@ configure do
 end
 
 helpers do
+  @@Stats = Struct.new(:hotspots, :danger_zone, :danger_percent)
+
   def histogram(hotspots)
     hotspots = hotspots.dup
     spots = hotspots.map {|spot| spot.last}
@@ -37,6 +39,20 @@ helpers do
     lc.show_legend = false
    # lc.shape_marker :circle, :color =&gt; '0000ff', :data_set_index =&gt; 0, :data_point_index =&gt; -1, :pixel_size =&gt; 10
     lc.to_url
+  end
+
+  def make_stats(hotspots, threshold)
+    danger_total = 0
+    threshold_total = 0
+    hottest_spots = {}
+
+    hotspots.each { |file, score| danger_total += score }
+    hotspots.each do |file, score|
+      hottest_spots[file] = score
+      threshold_total += score
+      break if threshold_total >= threshold * danger_total
+    end
+    return @@Stats.new(hotspots, hottest_spots, hottest_spots.length/hotspots.length.to_f)
   end
 end
 
@@ -63,10 +79,10 @@ end
 
 
 get "/hotspots/:org/:name/?:sha?" do |org, name, sha|
-  threshold = params[:threshold].to_f
+  @threshold = params[:threshold].to_f
   @total = 0
   @repo = repos[org][name]
-  @spots = @repo.get_hotspots threshold
+  @spots = @repo.get_hotspots
 
   haml :hotspots
 end
