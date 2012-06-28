@@ -79,7 +79,7 @@ end
 
 
 get "/hotspots/:org/:name/?:sha?" do |org, name, sha|
-  @threshold = params[:threshold].to_f
+  @threshold = (params[:threshold] || 0.5).to_f
   @total = 0
   @repo = repos[org][name]
   @spots = @repo.get_hotspots
