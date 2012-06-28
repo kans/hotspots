@@ -2,6 +2,7 @@ require 'json'
 
 require 'sinatra'
 require 'haml'
+require 'google_chart'
 
 require './repo'
 require './db'
@@ -20,12 +21,23 @@ configure do
   end
   repos.each do |org, org_repos|
     org_repos.each do |name, repo|
-      repo.set_hooks
-      repo.add_events
+      # repo.set_hooks
+      # repo.add_events
     end
   end
 end
 
+helpers do
+  def histogram(hotspots)
+    spots = hotspots.map {|spot| spot.last}
+    lc = GoogleChart::LineChart.new("500x500", "histogram", false)
+    lc.data "Line green", spots, '00ff00'
+    lc.axis :y, range:[0,1], font_size: 10, alignment: :center
+    lc.show_legend = false
+   # lc.shape_marker :circle, :color =&gt; '0000ff', :data_set_index =&gt; 0, :data_point_index =&gt; -1, :pixel_size =&gt; 10
+    lc.to_url
+  end
+end
 
 post "/api/:org/:name" do
   begin
@@ -50,16 +62,23 @@ end
 
 
 get "/hotspots/:org/:name/?:sha?" do |org, name, sha|
-  total = 0
-  repo = repos[org][name]
+  @total = 0
+  @repo = repos[org][name]
 
-  spots = repo.get_hotspots
-
-  spots.each { |file, score| total += score }
-  spots = spots.sort_by {|k, v| -v }
-  haml :hotspots, locals:{ :repo => repo, :spots => spots, :total => total }
+  spots = @repo.get_hotspots
+  haml :hotspots
 end
 
 get '/' do
   haml :index, locals:{ :repos => repos }
+end
+
+get '/histogram' do 
+  @spots = Hash.new
+  repos.each do |org, org_repo| 
+    org_repo.each do |name, repo|
+      @spots[repo.name] = repo.get_hotspots
+    end
+  end
+  haml :histogram 
 end

@@ -91,11 +91,17 @@ class Repo < OpenStruct
     now = Time.now
     events = DB::get_events self.id
     denom = now - Time.parse(events.last.date)
+    max = 0
     events.each do |event|
       t = 1 - ((now - Time.parse(event.date)).to_f / denom )
       hotspots[event.file] += 1/(1+Math.exp((-12*t)+12))
+      max = [hotspots[event.file], max].max
     end
-    return hotspots
+    hotspots.each_pair do |k, v|
+      hotspots[k] = v / max
+    end
+    hotspots = hotspots.sort_by {|k, v| -v }
+
   end
 
   def get_hotspots_for_sha(sha)

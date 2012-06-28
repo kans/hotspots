@@ -1,9 +1,10 @@
 %a{href:'/'} Home
-#{repo.name}
-%h1=total
+#{@repo.name}
+%img{:src=>histogram(@spots)}
+%h1=@total
 %table
   - a = 0
-  - spots.each do |file,score|
+  - @spots.each do |file,score|
     - a += score
     %tr
       %td=score

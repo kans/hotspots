@@ -1,0 +1,6 @@
+%a{href:'/'} Home
+
+- @spots.each_pair do |name, spots|
+	%h1=name
+	%img{:src=>histogram(spots)}
+
