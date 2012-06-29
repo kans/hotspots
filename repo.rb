@@ -36,7 +36,7 @@ class Repo < OpenStruct
 
   def pull()
     puts "Pulling #{self.full_name}, #{self.dir}"
-    process = self.grit_repo.git.pull({progress: true, process_info: true, timeout: 30}, "origin", "master")
+    process = self.grit_repo.git.pull({progress: true, process_info: true, timeout: 30, chdir: self.dir}, "origin", "master")
     print process.slice(1,2)
   end
 
@@ -59,6 +59,11 @@ class Repo < OpenStruct
     end
     github.repos.hooks.create self.org, self.name, name: "web", active: true,
       events: ["pull_request"], config: {url: hook_url, content_type: "json"}
+  end
+
+  def comment(pr_id, comment)
+    github = Github.new basic_auth: "#{self.login}:#{self.password}"
+    github.issues.comments.create self.org, self.name, pr_id, comment
   end
 
   def get_fixes_from_commits(commit_list)
@@ -116,6 +121,14 @@ class Repo < OpenStruct
       filtered_spots[file] = (spots.has_key?(file) ? spots[file] : 0.0)
     end
     return Helpers::sort_hotspots(filtered_spots)
+  end
+
+  def filter_hotspots(hotspots, files)
+    filtered_spots = Hash.new
+    files.each do |file|
+      filtered_spots[file] = (hotspots.has_key?(file) ? hotspots[file] : 0.0)
+    end
+    return filtered_spots
   end
 
   def get_files(from_sha, to_sha)
