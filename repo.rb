@@ -107,7 +107,7 @@ class Repo < OpenStruct
     return hotspots
   end
 
-  def get_hotspots(from_sha, to_sha=nil)
+  def get_hotspots_for_sha(from_sha, to_sha=nil)
     spots = self.get_hotspots
     filtered_spots = Hash.new
     files = self.get_files(from_sha, to_sha)
