@@ -1,0 +1,15 @@
+:plain
+- threshold = 0.5
+- stats = make_stats(spots, threshold)
+- if stats.danger_zone.empty?
+  ![]("http://bunny.jpg.to/")
+  No Danger!
+- else
+  ![Zone of Danger]("#{histogram(stats.danger_zone)}")
+  \# #{stats.danger_zone.length} dangerous files out of #{stats.hotspots.length}
+  \# #{sprintf('%.1f', stats.danger_percent * 100)}% of files contain #{sprintf('%.1f', threshold * 100)}% of danger
+  %table
+    - stats.danger_zone.each do |file,score|
+      %tr
+        %td #{sprintf('%.2f',score * 100)}%
+        %td=file
