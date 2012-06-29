@@ -55,7 +55,7 @@ post "/api/:org/:name" do
 end
 
 
-get "/hotspots/:org/:name/" do |org, name|
+get "/hotspots/:org/:name" do |org, name|
   @threshold = (params[:threshold] || 0.5).to_f
   @repo = repos[org][name]
   spots = @repo.get_hotspots
