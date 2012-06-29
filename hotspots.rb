@@ -2,13 +2,15 @@ require 'json'
 
 require 'sinatra'
 require 'haml'
-require 'google_chart'
 
 require './repo'
 require './db'
+require './helpers'
 
 $settings = {}
 repos = {}
+
+include Helpers
 
 configure do
   $settings = JSON.parse(File.read 'settings.json')
@@ -28,32 +30,7 @@ configure do
 end
 
 helpers do
-  Stats = Struct.new(:hotspots, :danger_zone, :danger_percent)
-
-  def histogram(hotspots)
-    hotspots = hotspots.dup
-    spots = hotspots.map {|spot| spot.last}
-    lc = GoogleChart::LineChart.new("500x500", "histogram", false)
-    lc.data "Line green", spots, '00ff00'
-    lc.axis :y, range:[0,1], font_size: 10, alignment: :center
-    lc.show_legend = false
-   # lc.shape_marker :circle, :color =&gt; '0000ff', :data_set_index =&gt; 0, :data_point_index =&gt; -1, :pixel_size =&gt; 10
-    lc.to_url
-  end
-
-  def make_stats(hotspots, threshold)
-    danger_total = 0
-    threshold_total = 0
-    hottest_spots = {}
-
-    hotspots.each { |file, score| danger_total += score }
-    hotspots.each do |file, score|
-      hottest_spots[file] = score
-      threshold_total += score
-      break if threshold_total >= threshold * danger_total
-    end
-    return Stats.new(hotspots, hottest_spots, hottest_spots.length/hotspots.length.to_f)
-  end
+  include Helpers
 end
 
 post "/api/:org/:name" do
@@ -78,11 +55,27 @@ post "/api/:org/:name" do
 end
 
 
-get "/hotspots/:org/:name/?:sha?" do |org, name, sha|
+get "/hotspots/:org/:name/" do |org, name|
   @threshold = (params[:threshold] || 0.5).to_f
-  @total = 0
   @repo = repos[org][name]
-  @spots = @repo.get_hotspots
+  spots = @repo.get_hotspots
+  @spots = Helpers::sort_hotspots(spots)
+
+  haml :hotspots
+end
+
+get "/hotspots/:org/:name/:from_sha/.?:to_sha?" do |org, name, from_sha, to_sha|
+  @threshold = (params[:threshold] || 1.1).to_f
+  @repo = repos[org][name]
+  spots = @repo.get_hotspots
+  filtered_spots = Hash.new
+
+  files = @repo.get_files(from_sha, to_sha)
+  files.each do |file|
+    filtered_spots[file] = (spots.has_key?(file) ? spots[file] : 0.0)
+  end
+
+  @spots = Helpers::sort_hotspots(filtered_spots)
 
   haml :hotspots
 end
