@@ -4,7 +4,9 @@ require 'uri'
 require 'debugger'
 require 'grit'
 require 'github_api'
+
 require './db'
+require './helpers'
 
 include FileUtils
 
@@ -54,8 +56,8 @@ class Repo < OpenStruct
     hooks_to_delete.each do |hook|
       github.repos.hooks.delete self.org, self.name, hook.id
     end
-    github.repos.hooks.create self.org, self.name, name: "web", active: true, config:
-    {url: hook_url, content_type: "json"}
+    github.repos.hooks.create self.org, self.name, name: "web", active: true,
+      events: ["pull_request"], config: {url: hook_url, content_type: "json"}
   end
 
   def get_fixes_from_commits(commit_list)
@@ -103,6 +105,16 @@ class Repo < OpenStruct
     end
 
     return hotspots
+  end
+
+  def get_hotspots(from_sha, to_sha=nil)
+    spots = self.get_hotspots
+    filtered_spots = Hash.new
+    files = self.get_files(from_sha, to_sha)
+    files.each do |file|
+      filtered_spots[file] = (spots.has_key?(file) ? spots[file] : 0.0)
+    end
+    return Helpers::sort_hotspots(filtered_spots)
   end
 
   def get_files(from_sha, to_sha)

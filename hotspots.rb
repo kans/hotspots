@@ -45,7 +45,8 @@ post "/api/:org/:name" do
     repo = repos[org][name]
     sha = data['head']['sha']
     puts sha
-    hotspots = repo.get_hotspots_for_sha(sha: sha)
+
+    hotspots = repo.get_hotspots(sha)
     puts hotspots
   rescue Exception => e
     puts e
