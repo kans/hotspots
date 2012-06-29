@@ -63,7 +63,7 @@ class Repo < OpenStruct
 
   def comment(pr_id, comment)
     github = Github.new basic_auth: "#{self.login}:#{self.password}"
-    github.issues.comments.create self.org, self.name, pr_id, comment
+    github.issues.comments.create self.org, self.name, pr_id, {body: comment}
   end
 
   def get_fixes_from_commits(commit_list)
@@ -115,11 +115,8 @@ class Repo < OpenStruct
 
   def get_hotspots_for_sha(from_sha, to_sha=nil)
     spots = self.get_hotspots
-    filtered_spots = Hash.new
     files = self.get_files(from_sha, to_sha)
-    files.each do |file|
-      filtered_spots[file] = (spots.has_key?(file) ? spots[file] : 0.0)
-    end
+    filtered_spots = self.filtered_spots(spots, files)
     return Helpers::sort_hotspots(filtered_spots)
   end
 

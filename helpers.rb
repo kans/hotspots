@@ -1,7 +1,10 @@
 require 'google_chart'
 
 module Helpers
-  Stats = Struct.new(:hotspots, :danger_zone, :danger_percent)
+  Stats = Struct.new(:hotspots, :danger_zone, :danger_percent, :danger_image)
+  danger_images = [
+    "",
+  ]
 
   def make_stats(hotspots, threshold)
     danger_total = 0
@@ -14,7 +17,8 @@ module Helpers
       threshold_total += score
       break if threshold_total >= threshold * danger_total
     end
-    return Stats.new(hotspots, hottest_spots, hottest_spots.length/hotspots.length.to_f)
+    danger_image = danger_images[(e/danger_images.length).to_i]
+    return Stats.new(hotspots, hottest_spots, hottest_spots.length/hotspots.length.to_f, danger_image)
   end
 
   def histogram(hotspots)

@@ -2,6 +2,7 @@ require 'json'
 
 require 'sinatra'
 require 'haml'
+require 'uri'
 
 require './repo'
 require './db'
@@ -33,7 +34,7 @@ helpers do
   include Helpers
 end
 
-post "/api/:org/:name" do
+post "/api/:org/:name" do |org, name|
   begin
     data = JSON.parse request.body.read
     action = data['action']
@@ -41,17 +42,25 @@ post "/api/:org/:name" do
     unless action == 'opened'
       return
     end
-    org = params[:org]
-    name = params[:name]
     repo = repos[org][name]
 
     sha = data['pull_request']['head']['sha']
     puts sha
 
-    hotspots = repo.get_hotspots_for_sha(sha)
-    puts hotspots
+    spots = repo.get_hotspots
+    filtered_spots = repo.get_hotspots_for_sha(sha)
+    puts spots
+
+    comment = haml :comment,
+                   locals:{ :repo => repo,
+                            :spots => spots,
+                            :filtered_spots => filtered_spots,
+                            :sha => sha}
+    puts comment
+    repo.comment(data['number'], comment.to_s)
   rescue Exception => e
     puts e
+    puts e.backtrace
   ensure
     status 204
   end
@@ -74,9 +83,7 @@ get "/hotspots/:org/:name/:from_sha/.?:to_sha?" do |org, name, from_sha, to_sha|
   filtered_spots = Hash.new
 
   files = @repo.get_files(from_sha, to_sha)
-  files.each do |file|
-    filtered_spots[file] = (spots.has_key?(file) ? spots[file] : 0.0)
-  end
+  filtered_spots = @repo.filter_hotspots(spots, files)
 
   @spots = Helpers::sort_hotspots(filtered_spots)
 
