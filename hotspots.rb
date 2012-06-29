@@ -37,16 +37,18 @@ post "/api/:org/:name" do
   begin
     data = JSON.parse request.body.read
     action = data['action']
+    puts data
     unless action == 'opened'
       return
     end
     org = params[:org]
     name = params[:name]
     repo = repos[org][name]
-    sha = data['head']['sha']
+
+    sha = data['pull_request']['head']['sha']
     puts sha
 
-    hotspots = repo.get_hotspots(sha)
+    hotspots = repo.get_hotspots_for_sha(sha)
     puts hotspots
   rescue Exception => e
     puts e
