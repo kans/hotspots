@@ -86,7 +86,6 @@ class Repo < OpenStruct
   end
 
   def get_hotspots()
-    # TODO: support sha
     hotspots = Hash.new 0
     now = Time.now
     events = DB::get_events self.id
@@ -100,33 +99,23 @@ class Repo < OpenStruct
     hotspots.each_pair do |k, v|
       hotspots[k] = v / max
     end
-    hotspots = hotspots.sort_by {|k, v| -v }
 
     return hotspots
   end
 
-  def get_hotspots_for_sha(sha)
+  def get_files(from_sha, to_sha)
     files = Set.new
+    to_sha ||= "master"
 
-    commit_list = self.grit_repo.git.rev_list(@@opts.dup, sha, "^master")
-    fixes = self.get_fixes_from_commits commit_list
-    hotspots = Hash.new(0)
-    debugger
-    files.each do |file|
-      hotspots[file] = self.hotspots[file]
-      puts file
+    self.pull() # TODO: remove this line
+    commit_list = self.grit_repo.git.rev_list(@@opts.dup, from_sha, "^"+to_sha)
+    tree = self.grit_repo.tree(to_sha || from_sha || "master")
+    Grit::Commit.list_from_string(self.grit_repo, commit_list).each do |commit|
+      # TODO: what does this line do - ANSWER: search the tree to get blobs, not dirs
+      commit.stats.files.map {|s| s.first}.select{ |s| tree/s }.each do |file|
+        files.add(file)
+      end
     end
-
-    spots = hotspots.collect do |spot|
-#      @@Spot.new(spot.first, sprintf('%.4f', spot.last))
-    end
-    t = 1 - ((now - fix.date).to_f / (now - fixes.last.date))
-    fix.files.each do |file|
-      hotspots[file] += 1/(1+Math.exp((-12*t)+12))
-    end
-    debugger
-    hotspots.sort_by! {|k,v| v}.reverse!
-    self.hotspots = hotspots
-    return spots
+    return files
   end
 end
