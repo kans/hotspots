@@ -35,8 +35,9 @@ class Repo < OpenStruct
   end
 
   def pull()
-    process = self.grit_repo.git.pull({progress: true, process_info: true}, self.dir)
-    print process[2]
+    puts "Pulling #{self.full_name}, #{self.dir}"
+    process = self.grit_repo.git.pull({progress: true, process_info: true, timeout: 30}, "origin", "master")
+    print process.slice(1,2)
   end
 
   def set_hooks()
