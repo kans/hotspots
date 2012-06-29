@@ -42,10 +42,12 @@ class Repo < OpenStruct
     hook_url = URI.join $settings['address'], "/api/#{self.org}/#{self.name}"
 
     github = Github.new basic_auth: "#{self.login}:#{self.password}"
-    hooks = github.repos.hooks.all self.org, self.name
+    options = {per_page: 100}
+    hooks = github.repos.hooks.all(self.org, self.name, options.dup)
     hooks_to_delete = []
     hooks.each do |hook|
-      if hook.name == "web" and hook.config.url == hook_url then
+      if hook.name == "web" and hook.config.url == hook_url.to_s then
+        puts "Deleting hook #{hook}"
         hooks_to_delete.push(hook)
       end
     end
