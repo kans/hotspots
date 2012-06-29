@@ -23,8 +23,8 @@ configure do
   end
   repos.each do |org, org_repos|
     org_repos.each do |name, repo|
-      # repo.set_hooks
-      # repo.add_events
+      repo.set_hooks
+      repo.add_events
     end
   end
 end
