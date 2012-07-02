@@ -66,37 +66,28 @@ post "/api/:org/:name" do |org, name|
   end
 end
 
+get %r{/hotspots/(?<org>\w+)/(?<name>\w+)}, :provides => :json do |org, name|
+  pass unless request.accept? 'application/json'
+  debugger
+  content_type :json  
+  spots = repos[org][name].get_hotspots
+  spots.to_json
+end
 
-get "/hotspots/:org/:name" do |org, name|
+get '/hotspots/:org/:name' do |org, name|
   @threshold = (params[:threshold] || 0.5).to_f
   @repo = repos[org][name]
   spots = @repo.get_hotspots
   @spots = Helpers::sort_hotspots(spots)
-
   haml :hotspots
 end
-
-get "/hotspots/:org/:name/:from_sha/.?:to_sha?" do |org, name, from_sha, to_sha|
-  @threshold = (params[:threshold] || 1.1).to_f
-  @repo = repos[org][name]
-  spots = @repo.get_hotspots
-  filtered_spots = Hash.new
-
-  files = @repo.get_files(from_sha, to_sha)
-  filtered_spots = @repo.filter_hotspots(spots, files)
-
-  @spots = Helpers::sort_hotspots(filtered_spots)
-
-  haml :hotspots
-end
-
 
 get '/' do
   haml :index, locals:{ :repos => repos }
 end
 
 
-get '/histogram' do 
+get '/histogram' do
   @repos = repos
-  haml :histogram 
+  haml :histogram
 end
