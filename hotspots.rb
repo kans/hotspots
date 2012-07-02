@@ -47,7 +47,7 @@ post "/api/:org/:name" do |org, name|
     sha = data['pull_request']['head']['sha']
     puts sha
 
-    spots = repo.get_hotspots
+    spots = Helpers::sort_hotspots(repo.get_hotspots)
     filtered_spots = repo.get_hotspots_for_sha(sha)
     puts spots
 
