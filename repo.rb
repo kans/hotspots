@@ -92,7 +92,7 @@ class Repo < OpenStruct
     args << 'master'
     commit_list = self.grit_repo.git.rev_list @@opts.dup, args
     fixes = self.get_fixes_from_commits commit_list
-    
+
     DB::add_events fixes, self.grit_repo.head.commit.sha, self.id
   end
 
