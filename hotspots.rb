@@ -1,3 +1,4 @@
+#!/usr/bin/env ruby
 require 'json'
 
 require 'sinatra'
@@ -15,9 +16,8 @@ include Helpers
 
 configure do
   $settings = JSON.parse(File.read 'settings.json')
-  settings_repos = $settings['repos']
 
-  settings_repos.each do |repo|
+  $settings['repos'].each do |repo|
     repo = Repo.new(repo)
     repos[repo.org] ||= {}
     repos[repo.org][repo.name] = repo

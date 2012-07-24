@@ -26,13 +26,12 @@ module DB
       $db.execute "INSERT INTO PROJECTS (org, repo, last_sha) VALUES(?, ?, ?);", repo.org, repo.name, nil
     rescue SQLite3::ConstraintException
     ensure
-      id = $db.get_first_value "SELECT id FROM projects WHERE org=? and repo=?;", repo.org, repo.name
-      return id
+      $db.get_first_value "SELECT id FROM projects WHERE org=? and repo=?;", repo.org, repo.name
     end
   end
 
   def DB.get_last_sha(project_id)
-    $db.get_first_value "SELECT last_sha FROM projects WHERE id=?;", project_id
+    return $db.get_first_value "SELECT last_sha FROM projects WHERE id=?;", project_id
   end
 
   def DB.multiple_insert(table, values)
