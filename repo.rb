@@ -29,6 +29,7 @@ class Repo < OpenStruct
     process = self.grit_git.clone({progress: true, process_info: true, timeout: 30},
       "https://#{self.login}:#{password}@github.com/#{self.org}/#{self.name}", self.dir)
     print process[2]
+    mkdir_p(self.dir, mode: 0755)
     self.grit_repo = Grit::Repo.new self.dir
     self.pull()
     self.id = DB::create_project self
