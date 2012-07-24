@@ -9,6 +9,5 @@ Gem::Specification.new do |s|
   s.add_dependency("sinatra", ">= 1.3.2")
   s.add_dependency("sqlite3", ">= 1.3.6")
   s.add_dependency("gchartrb", ">= 0.8")
-  s.add_dependency("debugger", ">= 1.1.4")	
-  
+  s.add_dependency("debugger", ">= 1.1.4")
 end
