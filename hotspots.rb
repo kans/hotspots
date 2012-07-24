@@ -68,7 +68,6 @@ end
 
 get %r{/hotspots/(?<org>\w+)/(?<name>\w+)}, :provides => :json do |org, name|
   pass unless request.accept? 'application/json'
-  debugger
   content_type :json  
   spots = repos[org][name].get_hotspots
   spots.to_json
