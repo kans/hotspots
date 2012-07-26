@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+
 require 'json'
 
 require 'sinatra'
@@ -66,25 +67,25 @@ post "/api/:org/:name" do |org, name|
   end
 end
 
-get %r{/hotspots/(?<org>\w+)/(?<name>\w+)}, :provides => :json do |org, name|
-  pass unless request.accept? 'application/json'
-  content_type :json  
-  spots = repos[org][name].get_hotspots
-  spots.to_json
-end
-
 get '/hotspots/:org/:name' do |org, name|
+
   @threshold = (params[:threshold] || 0.5).to_f
   @repo = repos[org][name]
   spots = @repo.get_hotspots
   @spots = Helpers::sort_hotspots(spots)
-  haml :hotspots
+
+  if request.accept? 'text/html'
+    return haml :hotspots
+  else
+    content_type :json
+    return spots.to_json
+  end
 end
+
 
 get '/' do
   haml :index, locals:{ :repos => repos }
 end
-
 
 get '/histogram' do
   @repos = repos
