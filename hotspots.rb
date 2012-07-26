@@ -6,6 +6,7 @@ require 'sinatra'
 require 'haml'
 require 'uri'
 require 'oauth2'
+require 'patron'
 
 require './repo'
 require './db'
@@ -75,7 +76,17 @@ end
 
 get '/oauth/callback/:org/:name' do |org, name|
   code = params[:code]
-end
+  
+  query_string = {
+    :client_id => $settings['client_id'],
+    :client_secret => $settings['secret'],
+    :code => code,
+    :state => "repo" }.map{|k,v| "#{CGI.escape(k.to_s)}=#{CGI.escape(v)}"}.join("&")
+  response = Patron::Session.new.post "https://github.com/login/oauth/access_token", query_string
+  return 'oh noes' unless response.status == 200
+  body = CGI::parse response.body
+  token = body.has_key?("access_token") && body["access_token"][0]
+end 
 
 get '/hotspots/:org/:name' do |org, name|
 
