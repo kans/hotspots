@@ -3,6 +3,7 @@ require 'sqlite3'
 $db = SQLite3::Database.new('db.sqlite')
 $db.execute "
 CREATE TABLE IF NOT EXISTS projects (
+  access_token TEXT,
   id INTEGER PRIMARY KEY NOT NULL,
   org VARCHAR(40) NOT NULL,
   repo VARCHAR(40) NOT NULL,

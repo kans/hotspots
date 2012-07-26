@@ -5,6 +5,7 @@ require 'json'
 require 'sinatra'
 require 'haml'
 require 'uri'
+require 'oauth2'
 
 require './repo'
 require './db'
@@ -65,6 +66,15 @@ post "/api/:org/:name" do |org, name|
   ensure
     status 204
   end
+end
+
+get '/oauth/:org/:name' do |org, name|
+  # project = repos[org] && repos[org][name]
+  return haml :oauth, locals:{ :org => org, :name => name}
+end
+
+get '/oauth/callback/:org/:name' do |org, name|
+  code = params[:code]
 end
 
 get '/hotspots/:org/:name' do |org, name|
