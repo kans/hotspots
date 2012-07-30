@@ -8,17 +8,15 @@ require 'uri'
 require 'oauth2'
 require 'patron'
 
+$settings = JSON.parse(File.read 'settings.json')
+
 require './models'
 require './helpers'
-
-$settings = {}
-projects = {}
-
 include Helpers
 
-configure do
-  $settings = JSON.parse(File.read 'settings.json')
+projects = {}
 
+configure do
   $DB[:projects].each do |db_project|
     project = Project.new(db_project)
     projects[project.org] ||= {}
