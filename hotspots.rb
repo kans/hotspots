@@ -27,8 +27,12 @@ configure do
   end
   repos.each do |org, org_repos|
     org_repos.each do |name, repo|
-      repo.set_hooks
-      repo.add_events
+      begin
+        repo.set_hooks
+        repo.add_events
+      rescue Exception => e
+        puts e, e.backtrace
+      end
     end
   end
 end
