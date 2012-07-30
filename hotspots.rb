@@ -66,8 +66,7 @@ post "/api/:org/:name" do |org, name|
     puts comment
     repo.comment(data['number'], comment.to_s)
   rescue Exception => e
-    puts e
-    puts e.backtrace
+    puts e, e.backtrace
   ensure
     status 204
   end
