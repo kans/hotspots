@@ -1,16 +1,15 @@
-require 'ostruct'
 require 'uri'
 
 require 'debugger'
 require 'grit'
 require 'github_api'
 
-require './db'
+require 'sequel'
 require './helpers'
 
 include FileUtils
 
-class Repo < OpenStruct
+class Project < Sequel::Model
   @@Fix = Struct.new(:project_id, :date, :sha, :file)
   @@opts = {:max_count => false, :no_merges => true, :pretty => "raw", :timeout => false}
 
@@ -18,11 +17,11 @@ class Repo < OpenStruct
     return "#{self.org}/#{self.name}"
   end
 
-  def initialize(name)
+  def initialize(project)
     debugger
-    super(repo)
+    super(project)
     self.hotspots = Hash.new(0)
-    self.dir = File.expand_path("#{$settings['repo_dir']}/#{self.org}/#{self.name}")
+    self.dir = File.expand_path("#{$settings['project_dir']}/#{self.org}/#{self.name}")
     mkdir_p(self.dir, mode: 0755)
     self.grit_git = Grit::Git.new self.dir
 
@@ -33,7 +32,6 @@ class Repo < OpenStruct
     mkdir_p(self.dir, mode: 0755)
     self.grit_repo = Grit::Repo.new self.dir
     self.pull()
-    self.id = DB::create_project self
   end
 
   def pull()
@@ -85,7 +83,7 @@ class Repo < OpenStruct
 
   def add_events()
     puts 'setting spots for ' + self.name
-    last_sha = DB::get_last_sha self.id
+    last_sha = $DB[:projects].where(id: project_id).get(:last_sha)
     args = []
     if last_sha
       args << "^#{last_sha}"
