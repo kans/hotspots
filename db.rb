@@ -1,46 +1,4 @@
-require 'sqlite3'
-
-$db = SQLite3::Database.new('db.sqlite')
-$db.execute "
-CREATE TABLE IF NOT EXISTS projects (
-  access_token TEXT,
-  id INTEGER PRIMARY KEY NOT NULL,
-  org VARCHAR(40) NOT NULL,
-  name VARCHAR(40) NOT NULL,
-  last_sha VARCHAR(40),
-  UNIQUE(name, org)
-);"
-
-$db.execute "
-CREATE TABLE IF NOT EXISTS events (
-  project_id REFERENCES projects(id) NOT NULL,
-  date TIMESTAMP NOT NULL,
-  sha VARCHAR(40),
-  file TEXT NOT NULL,
-  UNIQUE(sha, file)
-);
-"
-
-module DB
-  def DB.create_project(repo)
-    begin
-      $db.execute "INSERT INTO PROJECTS (org, repo, last_sha) VALUES(?, ?, ?);", repo.org, repo.name, nil
-    rescue SQLite3::ConstraintException
-    ensure
-      return $db.get_first_value "SELECT id FROM projects WHERE org=? and repo=?;", repo.org, repo.name
-    end
-  end
-
-  def DB.get_projects()
-    begin
-      $db.execute "SELECT "
-    end
-  end
-
-  def DB.get_last_sha(project_id)
-    return $db.get_first_value "SELECT last_sha FROM projects WHERE id=?;", project_id
-  end
-
+=begin
   def DB.multiple_insert(table, values)
     args = []
     cols = []
@@ -86,4 +44,4 @@ module DB
     end
     return events
   end
-end
+=end

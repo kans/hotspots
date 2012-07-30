@@ -9,44 +9,58 @@ require './helpers'
 
 include FileUtils
 
+$DB.create_table? :projects do
+  primary_key :id
+  String :access_token
+  String :org, null: false
+  String :name, null: false
+  String :last_sha
+  unique [:org, :name]
+end
+
 class Project < Sequel::Model
   @@Fix = Struct.new(:project_id, :date, :sha, :file)
   @@opts = {:max_count => false, :no_merges => true, :pretty => "raw", :timeout => false}
 
+  attr_accessor :hotspots, :org, :name
+
   def full_name()
-    return "#{self.org}/#{self.name}"
+    return "#{@org}/#{@name}"
   end
 
   def initialize(project)
+    project.each do |k, v|
+      self.instance_variable_set("@#{k.to_s}", v)
+    end
+    @hotspots = Hash.new(0)
+    @dir = File.expand_path("#{$settings['project_dir']}/#{@org}/#{@name}")
     debugger
-    super(project)
-    self.hotspots = Hash.new(0)
-    self.dir = File.expand_path("#{$settings['project_dir']}/#{self.org}/#{self.name}")
-    mkdir_p(self.dir, mode: 0755)
-    self.grit_git = Grit::Git.new self.dir
+    mkdir_p(@dir, mode: 0755)
+    @grit_git = Grit::Git.new @dir
 
-    password = CGI::escape self.password
-    process = self.grit_git.clone({progress: true, process_info: true, timeout: 30},
-      "https://#{self.login}:#{password}@github.com/#{self.org}/#{self.name}", self.dir)
+    @login = $settings['login']
+    @password = CGI::escape $settings['password']
+    process = @grit_git.clone({progress: true, process_info: true, timeout: 30},
+      "https://#{@login}:#{@password}@github.com/#{@org}/#{@name}", @dir)
     print process[2]
-    mkdir_p(self.dir, mode: 0755)
-    self.grit_repo = Grit::Repo.new self.dir
+    mkdir_p(@dir, mode: 0755)
+    @grit_repo = Grit::Repo.new @dir
     self.pull()
   end
 
   def pull()
-    puts "Pulling #{self.full_name}, #{self.dir}"
-    process = self.grit_repo.git.pull({progress: true, process_info: true, timeout: 30, chdir: self.dir}, "origin", "master")
+    puts "Pulling #{self.full_name}, #{@dir}"
+    process = @grit_repo.git.pull({progress: true, process_info: true, timeout: 30, chdir: @dir}, "origin", "master")
     print process.slice(1,2)
   end
 
   def set_hooks()
     puts "Setting hooks for #{self.full_name}"
-    hook_url = URI.join $settings['address'], "/api/#{self.org}/#{self.name}"
+    hook_url = URI.join $settings['address'], "/api/#{@org}/#{@name}"
 
-    github = Github.new basic_auth: "#{self.login}:#{self.password}"
+    github = Github.new basic_auth: "#{self.login}:#{@password}"
     options = {per_page: 100}
-    hooks = github.repos.hooks.all(self.org, self.name, options.dup)
+    hooks = github.repos.hooks.all(@org, @name, options.dup)
     hooks_to_delete = []
     hooks.each do |hook|
       if hook.name == "web" and hook.config.url == hook_url.to_s then
@@ -55,22 +69,22 @@ class Project < Sequel::Model
       end
     end
     hooks_to_delete.each do |hook|
-      github.repos.hooks.delete self.org, self.name, hook.id
+      github.repos.hooks.delete @org, @name, hook.id
     end
-    github.repos.hooks.create self.org, self.name, name: "web", active: true,
+    github.repos.hooks.create @org, @name, name: "web", active: true,
       events: ["pull_request"], config: {url: hook_url, content_type: "json"}
   end
 
   def comment(pr_id, comment)
-    github = Github.new basic_auth: "#{self.login}:#{self.password}"
-    github.issues.comments.create self.org, self.name, pr_id, {body: comment}
+    github = Github.new basic_auth: "#{self.login}:#{@password}"
+    github.issues.comments.create @org, @name, pr_id, {body: comment}
   end
  
   def get_fixes_from_commits(commit_list)
     fixes = []
     regex = /fix(es|ed)?|close(s|d)?/i
-    tree = self.grit_repo.tree("master")
-    Grit::Commit.list_from_string(self.grit_repo, commit_list).each do |commit|
+    tree = @grit_repo.tree("master")
+    Grit::Commit.list_from_string(@grit_repo, commit_list).each do |commit|
       if commit.message =~ regex
         # TODO: what does this line do - ANSWER: search the tree to get blobs, not dirs
         commit.stats.files.map {|s| s.first}.select{ |s| tree/s }.each do |file|
@@ -82,17 +96,17 @@ class Project < Sequel::Model
   end
 
   def add_events()
-    puts 'setting spots for ' + self.name
+    puts 'setting spots for ' + @name
     last_sha = $DB[:projects].where(id: project_id).get(:last_sha)
     args = []
     if last_sha
       args << "^#{last_sha}"
     end
     args << 'master'
-    commit_list = self.grit_repo.git.rev_list @@opts.dup, args
+    commit_list = @grit_repo.git.rev_list @@opts.dup, args
     fixes = self.get_fixes_from_commits commit_list
 
-    DB::add_events fixes, self.grit_repo.head.commit.sha, self.id
+    DB::add_events fixes, @grit_repo.head.commit.sha, self.id
   end
 
   def get_hotspots()
@@ -134,9 +148,9 @@ class Project < Sequel::Model
     to_sha ||= "master"
 
     self.pull() # TODO: remove this line
-    commit_list = self.grit_repo.git.rev_list(@@opts.dup, from_sha, "^"+to_sha)
-    tree = self.grit_repo.tree(to_sha || from_sha || "master")
-    Grit::Commit.list_from_string(self.grit_repo, commit_list).each do |commit|
+    commit_list = @grit_repo.git.rev_list(@@opts.dup, from_sha, "^"+to_sha)
+    tree = @grit_repo.tree(to_sha || from_sha || "master")
+    Grit::Commit.list_from_string(@grit_repo, commit_list).each do |commit|
       # TODO: what does this line do - ANSWER: search the tree to get blobs, not dirs
       commit.stats.files.map {|s| s.first}.select{ |s| tree/s }.each do |file|
         files.add(file)

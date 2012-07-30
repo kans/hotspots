@@ -8,28 +8,27 @@ require 'uri'
 require 'oauth2'
 require 'patron'
 
-require './repo'
-require './db'
+require './models'
 require './helpers'
 
 $settings = {}
-repos = {}
+projects = {}
 
 include Helpers
 
 configure do
   $settings = JSON.parse(File.read 'settings.json')
 
-  DB.get_projects
-    repo = Repo.new(name)
-    repos[repo.org] ||= {}
-    repos[repo.org][repo.name] = repo
+  $DB[:projects].each do |db_project|
+    project = Project.new(db_project)
+    projects[project.org] ||= {}
+    projects[project.org][project.name] = project
   end
-  repos.each do |org, org_repos|
-    org_repos.each do |name, repo|
+  projects.each do |org, org_projects|
+    org_projects.each do |name, project|
       begin
-        repo.set_hooks
-        repo.add_events
+        project.set_hooks
+        project.add_events
       rescue Exception => e
         puts e, e.backtrace
       end
@@ -49,22 +48,22 @@ post "/api/:org/:name" do |org, name|
     unless action == 'opened'
       return
     end
-    repo = repos[org][name]
+    project = projects[org][name]
 
     sha = data['pull_request']['head']['sha']
     puts sha
 
-    spots = Helpers::sort_hotspots(repo.get_hotspots)
-    filtered_spots = repo.get_hotspots_for_sha(sha)
+    spots = Helpers::sort_hotspots(project.get_hotspots)
+    filtered_spots = project.get_hotspots_for_sha(sha)
     puts spots
 
     comment = haml :comment,
-                   locals:{ :repo => repo,
+                   locals:{ :project => project,
                             :spots => spots,
                             :filtered_spots => filtered_spots,
                             :sha => sha}
     puts comment
-    repo.comment(data['number'], comment.to_s)
+    project.comment(data['number'], comment.to_s)
   rescue Exception => e
     puts e, e.backtrace
   ensure
@@ -73,7 +72,7 @@ post "/api/:org/:name" do |org, name|
 end
 
 get '/oauth/:org/:name' do |org, name|
-  # project = repos[org] && repos[org][name]
+  # project = projects[org] && projects[org][name]
   return haml :oauth, locals:{ :org => org, :name => name}
 end
 
@@ -84,7 +83,7 @@ get '/oauth/callback/:org/:name' do |org, name|
     :client_id => $settings['client_id'],
     :client_secret => $settings['secret'],
     :code => code,
-    :state => "repo" }.map{|k,v| "#{CGI.escape(k.to_s)}=#{CGI.escape(v)}"}.join("&")
+    :state => "project" }.map{|k,v| "#{CGI.escape(k.to_s)}=#{CGI.escape(v)}"}.join("&")
   response = Patron::Session.new.post "https://github.com/login/oauth/access_token", query_string
   return 'oh noes' unless response.status == 200
   body = CGI::parse response.body
@@ -94,8 +93,8 @@ end
 get '/hotspots/:org/:name' do |org, name|
 
   @threshold = (params[:threshold] || 0.5).to_f
-  @repo = repos[org][name]
-  spots = @repo.get_hotspots
+  @project = projects[org][name]
+  spots = @project.get_hotspots
   @spots = Helpers::sort_hotspots(spots)
 
   if request.accept? 'text/html'
@@ -108,10 +107,10 @@ end
 
 
 get '/' do
-  haml :index, locals:{ :repos => repos }
+  haml :index, locals:{ :projects => projects }
 end
 
 get '/histogram' do
-  @repos = repos
+  @projects = projects
   haml :histogram
 end
