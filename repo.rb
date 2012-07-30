@@ -18,7 +18,8 @@ class Repo < OpenStruct
     return "#{self.org}/#{self.name}"
   end
 
-  def initialize(repo)
+  def initialize(name)
+    debugger
     super(repo)
     self.hotspots = Hash.new(0)
     self.dir = File.expand_path("#{$settings['repo_dir']}/#{self.org}/#{self.name}")

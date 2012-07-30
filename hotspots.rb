@@ -20,8 +20,8 @@ include Helpers
 configure do
   $settings = JSON.parse(File.read 'settings.json')
 
-  $settings['repos'].each do |repo|
-    repo = Repo.new(repo)
+  DB.get_projects
+    repo = Repo.new(name)
     repos[repo.org] ||= {}
     repos[repo.org][repo.name] = repo
   end

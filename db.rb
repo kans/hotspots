@@ -6,9 +6,9 @@ CREATE TABLE IF NOT EXISTS projects (
   access_token TEXT,
   id INTEGER PRIMARY KEY NOT NULL,
   org VARCHAR(40) NOT NULL,
-  repo VARCHAR(40) NOT NULL,
+  name VARCHAR(40) NOT NULL,
   last_sha VARCHAR(40),
-  UNIQUE(repo, org)
+  UNIQUE(name, org)
 );"
 
 $db.execute "
@@ -28,6 +28,12 @@ module DB
     rescue SQLite3::ConstraintException
     ensure
       return $db.get_first_value "SELECT id FROM projects WHERE org=? and repo=?;", repo.org, repo.name
+    end
+  end
+
+  def DB.get_projects()
+    begin
+      $db.execute "SELECT "
     end
   end
 
