@@ -100,6 +100,7 @@ class Repo < OpenStruct
     hotspots = Hash.new 0
     now = Time.now
     events = DB::get_events self.id
+    return [] if events.empty?
     denom = now - Time.parse(events.last.date)
     max = 0
     events.each do |event|
