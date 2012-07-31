@@ -8,13 +8,17 @@ require 'uri'
 require 'oauth2'
 require 'patron'
 
+require './urls'
 $settings = JSON.parse(File.read 'settings.json')
 
 require './models'
 require './helpers'
 include Helpers
 
-require 'debugger'
+#require 'debugger'
+require 'ruby-debug'
+Debugger.wait_connection = true
+Debugger.start_remote
 
 projects = {}
 
@@ -41,7 +45,7 @@ helpers do
   include Helpers
 end
 
-post "/api/:org/:name" do |org, name|
+post $urls[:GITHUB_HOOK] do |org, name|
   @status = 204
   begin
     data = JSON.parse request.body.read
@@ -79,7 +83,7 @@ post "/api/:org/:name" do |org, name|
 end
 
 
-get '/oauth/callback/' do
+get $urls[:OAUTH_CALLBACK] do
   code = params[:code]
 
   query_string = {
@@ -99,9 +103,24 @@ get '/oauth/callback/' do
   # XXXX: Make sure this is over HTTPS!
   @token = token
   haml :select_repo
-end 
+end
 
-get '/hotspots/:org/:name' do |org, name|
+
+post $urls[:ADD_REPOS] do
+  repos = request.POST
+  token = repos.delete "token"
+
+  repos.each do |repo, clone_url|
+    org, name = repo.split "/"
+    project = Project.new(org, name, clone_url, token)
+    project.save
+  end
+
+  redirect "/", 302
+end
+
+
+get $urls[:HOTSPOTS] do |org, name|
   @threshold = (params[:threshold] || 0.5).to_f
   @project = projects[org][name]
   spots = @project.get_hotspots
@@ -121,7 +140,7 @@ get '/' do
 end
 
 
-get '/histogram' do
+get $urls[:HISTOGRAM] do
   @projects = projects
   haml :histogram
 end

@@ -28,10 +28,10 @@ class Project < Sequel::Model
     return "#{@org}/#{@name}"
   end
 
-  def initialize(project)
-    project.each do |k, v|
-      self.instance_variable_set("@#{k.to_s}", v)
-    end
+  def initialize(org, name, clone_url, token)
+    @org = org
+    @name = name
+    @access_token = token
     @hotspots = Hash.new(0)
     @dir = File.expand_path("#{$settings['project_dir']}/#{@org}/#{@name}")
     debugger
