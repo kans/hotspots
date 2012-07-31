@@ -1,8 +1,11 @@
 %h1 Select repos
 
 %form{action:"/add_repos", method:"POST"}
-  @repos.each do |repo|
-    - name = repo["full_name"]
-    %input{type:"checkbox", name:name, value:name}
-    %label{for:name} Repo
-  %submit{value:"Add"}
+  %ul
+    - @repos.each do |repo|
+      - name = repo["full_name"]
+      %li
+        %input{type:"checkbox", name:name, value:name}
+        %label{for:name}=name
+  %input{type:"hidden", name:"token", value:@token}
+  %input{type:"submit"} Add Projects
