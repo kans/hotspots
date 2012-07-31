@@ -87,11 +87,13 @@ get '/oauth/callback/' do
     :client_secret => $settings['secret'],
     :code => code,
     :state => "project" }.map{|k,v| "#{CGI.escape(k.to_s)}=#{CGI.escape(v)}"}.join("&")
-  response = Patron::Session.new.post "https://github.com/login/oauth/access_token", query_string
+  session = Patron::Session.new
+  session.timeout = 10
+  response = session.post "https://github.com/login/oauth/access_token", query_string
   return 'oh noes' if response.status >= 400
   body = CGI::parse response.body
   token = body.has_key?("access_token") && body["access_token"][0]
-  response = Patron::Session.new.get "https://api.github.com/user/repos?access_token=#{token}"
+  response = session.get "https://api.github.com/user/repos?access_token=#{token}"
   return 'oh noes' if response.status >= 400
   @repos = JSON.parse response.body
   # XXXX: Make sure this is over HTTPS!

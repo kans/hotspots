@@ -5,7 +5,7 @@
     - @repos.each do |repo|
       - name = repo["full_name"]
       %li
-        %input{type:"checkbox", name:name, value:name}
+        %input{type:"checkbox", name:name, value:name, id:name}
         %label{for:name}=name
   %input{type:"hidden", name:"token", value:@token}
   %input{type:"submit"} Add Projects
