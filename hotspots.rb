@@ -89,13 +89,13 @@ get '/oauth/callback/' do
     :state => "project" }.map{|k,v| "#{CGI.escape(k.to_s)}=#{CGI.escape(v)}"}.join("&")
   response = Patron::Session.new.post "https://github.com/login/oauth/access_token", query_string
   return 'oh noes' if response.status >= 400
-  body = CGI::parse response.body
+  body = JSON.parse response.body
   token = body.has_key?("access_token") && body["access_token"][0]
   response = Patron::Session.new.get "https://api.github.com/user/repos?access_token=#{token}"
   return 'oh noes' if response.status >= 400
-  body = CGI::parse response.body
-  debugger
-  repo = body[0]
+  @repos = JSON.parse response.body
+
+  haml :select_repo
 end 
 
 get '/hotspots/:org/:name' do |org, name|

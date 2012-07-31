@@ -1,0 +1,8 @@
+%h1 Select repos
+
+%form{action:"/add_repos", method:"POST"}
+  @repos.each do |repo|
+    - name = repo["full_name"]
+    %input{type:"checkbox", name:name, value:name}
+    %label{for:name} Repo
+  %submit{value:"Add"}
