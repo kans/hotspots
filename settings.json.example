@@ -1,5 +1,7 @@
 {
-  "repo_dir": "../repos",
+  "client_id": "1234567890",
+  "secret": "abcdefg",
+  "project_dir": "../repos",
   "address": "http://example.com/",
   "login": "github_username",
   "password": "password!1234"

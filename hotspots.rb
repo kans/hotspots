@@ -14,10 +14,13 @@ require './models'
 require './helpers'
 include Helpers
 
+require 'debugger'
+
 projects = {}
 
 configure do
   $DB[:projects].each do |db_project|
+    debugger
     project = Project.new(db_project)
     projects[project.org] ||= {}
     projects[project.org][project.name] = project
@@ -39,6 +42,7 @@ helpers do
 end
 
 post "/api/:org/:name" do |org, name|
+  @status = 204
   begin
     data = JSON.parse request.body.read
     action = data['action']
@@ -46,7 +50,12 @@ post "/api/:org/:name" do |org, name|
     unless action == 'opened'
       return
     end
-    project = projects[org][name]
+
+    project = projects[org] && projects[org][name]
+    unless project
+      @status = 404
+      return
+    end
 
     sha = data['pull_request']['head']['sha']
     puts sha
@@ -65,31 +74,31 @@ post "/api/:org/:name" do |org, name|
   rescue Exception => e
     puts e, e.backtrace
   ensure
-    status 204
+    status @status
   end
 end
 
-get '/oauth/:org/:name' do |org, name|
-  # project = projects[org] && projects[org][name]
-  return haml :oauth, locals:{ :org => org, :name => name}
-end
 
-get '/oauth/callback/:org/:name' do |org, name|
+get '/oauth/callback/' do
   code = params[:code]
-  
+
   query_string = {
     :client_id => $settings['client_id'],
     :client_secret => $settings['secret'],
     :code => code,
     :state => "project" }.map{|k,v| "#{CGI.escape(k.to_s)}=#{CGI.escape(v)}"}.join("&")
   response = Patron::Session.new.post "https://github.com/login/oauth/access_token", query_string
-  return 'oh noes' unless response.status == 200
+  return 'oh noes' unless response.status >= 400
   body = CGI::parse response.body
   token = body.has_key?("access_token") && body["access_token"][0]
+  response = Patron::Session.new.get "https://api.github.com//user/repos?access_token=#{token}"
+  return 'oh noes' unless response.status >= 400
+  body = CGI::parse response.body
+  debugger
+  repo = body[0]
 end 
 
 get '/hotspots/:org/:name' do |org, name|
-
   @threshold = (params[:threshold] || 0.5).to_f
   @project = projects[org][name]
   spots = @project.get_hotspots
@@ -107,6 +116,7 @@ end
 get '/' do
   haml :index, locals:{ :projects => projects }
 end
+
 
 get '/histogram' do
   @projects = projects
