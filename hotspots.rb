@@ -9,7 +9,6 @@ require 'faraday'
 require 'haml'
 require 'uri'
 require 'oauth2'
-require 'patron'
 
 require './urls'
 
@@ -18,7 +17,6 @@ require 'debugger'
 #require 'ruby-debug'
 # Debugger.wait_connection = true
 # Debugger.start_remote
-
 
 class Hotspots < Sinatra::Base
   @@projects = {}

@@ -9,6 +9,8 @@ Gem::Specification.new do |s|
   s.add_dependency("sinatra", ">= 1.3.2")
   s.add_dependency("gchartrb", ">= 0.8")
   s.add_dependency("debugger", ">= 1.1.4")
-  s.add_dependency("patron", ">= 0.4.18")
   s.add_dependency("sequel", ">= 3.37.0")
+  s.add_dependency("thin")
+  s.add_dependency("sinatra-synchrony")
+  s.add_dependency("faraday")
 end
