@@ -9,31 +9,33 @@ require './helpers'
 
 include FileUtils
 
-$DB.create_table? :projects do
-  primary_key :id
-  String :access_token
-  String :org, null: false
-  String :name, null: false
-  String :last_sha
-  unique [:org, :name]
-end
 
 class Project < Sequel::Model
+  plugin :schema
+  set_schema do
+    primary_key :id
+    String :access_token
+    String :org, null: false
+    String :name, null: false
+    String :last_sha
+    unique [:org, :name]
+    one_to_many :event
+  end
+
   @@Fix = Struct.new(:project_id, :date, :sha, :file)
   @@opts = {:max_count => false, :no_merges => true, :pretty => "raw", :timeout => false}
 
-  attr_accessor :hotspots, :org, :name
+  attr_accessor :hotspots
 
   def full_name()
-    return "#{@org}/#{@name}"
+    return "#{self.org}/#{self.name}"
   end
 
   def initialize(org, name, clone_url, token)
-    @org = org
-    @name = name
-    @access_token = token
+    # TODO: fetching projects from the DB causes a git clone. probbaly want to fix this
+    super(org: org, name: name, access_token: token)
     @hotspots = Hash.new(0)
-    @dir = File.expand_path("#{$settings['project_dir']}/#{@org}/#{@name}")
+    @dir = File.expand_path("#{$settings['project_dir']}/#{self.org}/#{self.name}")
     debugger
     mkdir_p(@dir, mode: 0755)
     @grit_git = Grit::Git.new @dir
@@ -41,7 +43,7 @@ class Project < Sequel::Model
     @login = $settings['login']
     @password = CGI::escape $settings['password']
     process = @grit_git.clone({progress: true, process_info: true, timeout: 30},
-      "https://#{@login}:#{@password}@github.com/#{@org}/#{@name}", @dir)
+      "https://#{@login}:#{@password}@github.com/#{self.org}/#{self.name}", @dir)
     print process[2]
     mkdir_p(@dir, mode: 0755)
     @grit_repo = Grit::Repo.new @dir
@@ -56,11 +58,11 @@ class Project < Sequel::Model
 
   def set_hooks()
     puts "Setting hooks for #{self.full_name}"
-    hook_url = URI.join $settings['address'], "/api/#{@org}/#{@name}"
+    hook_url = URI.join $settings['address'], "/api/#{self.org}/#{self.name}"
 
     github = Github.new basic_auth: "#{self.login}:#{@password}"
     options = {per_page: 100}
-    hooks = github.repos.hooks.all(@org, @name, options.dup)
+    hooks = github.repos.hooks.all(self.org, self.name, options.dup)
     hooks_to_delete = []
     hooks.each do |hook|
       if hook.name == "web" and hook.config.url == hook_url.to_s then
@@ -69,15 +71,15 @@ class Project < Sequel::Model
       end
     end
     hooks_to_delete.each do |hook|
-      github.repos.hooks.delete @org, @name, hook.id
+      github.repos.hooks.delete self.org, self.name, hook.id
     end
-    github.repos.hooks.create @org, @name, name: "web", active: true,
+    github.repos.hooks.create self.org, self.name, name: "web", active: true,
       events: ["pull_request"], config: {url: hook_url, content_type: "json"}
   end
 
   def comment(pr_id, comment)
     github = Github.new basic_auth: "#{self.login}:#{@password}"
-    github.issues.comments.create @org, @name, pr_id, {body: comment}
+    github.issues.comments.create self.org, self.name, pr_id, {body: comment}
   end
  
   def get_fixes_from_commits(commit_list)
@@ -96,7 +98,7 @@ class Project < Sequel::Model
   end
 
   def add_events()
-    puts 'setting spots for ' + @name
+    puts 'setting spots for ' + self.name
     last_sha = $DB[:projects].where(id: project_id).get(:last_sha)
     args = []
     if last_sha
@@ -112,7 +114,8 @@ class Project < Sequel::Model
   def get_hotspots()
     hotspots = Hash.new 0
     now = Time.now
-    events = DB::get_events self.id
+    debugger
+    events = self.events
     return [] if events.empty?
     denom = now - Time.parse(events.last.date)
     max = 0

@@ -1,7 +1,7 @@
 %h1 Projects
 - projects.each do |org_name, org|
   - org.each do |name, repo|
-    %a{href:$urls[:HOTSPOTS]} #{repo.org}/#{name}
+    %a{href:"/hotspots/#{repo.org}/#{name}"} #{repo.org}/#{name}
 
 %h1 Add Project
 %a{href:"https://github.com/login/oauth/authorize?scope=repo&client_id=#{$settings['client_id']}&redirect_uri=#{$settings['address']}/oauth/callback/"} Sign in with Github

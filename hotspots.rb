@@ -23,20 +23,16 @@ Debugger.start_remote
 projects = {}
 
 configure do
-  $DB[:projects].each do |db_project|
-    debugger
-    project = Project.new(db_project)
-    projects[project.org] ||= {}
-    projects[project.org][project.name] = project
-  end
-  projects.each do |org, org_projects|
-    org_projects.each do |name, project|
-      begin
-        project.set_hooks
-        project.add_events
-      rescue Exception => e
-        puts e, e.backtrace
-      end
+  Project.all.each do |project|
+    begin
+      org = project.org
+      name = project.name
+      projects[org] ||= {}
+      projects[org][name] = project
+      project.add_events
+      project.set_hooks
+    rescue Exception => e
+      puts e, e.backtrace
     end
   end
 end
