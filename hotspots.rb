@@ -88,7 +88,10 @@ get $urls[:OAUTH_CALLBACK] do
     :client_id => $settings['client_id'],
     :client_secret => $settings['secret'],
     :code => code,
-    :state => "project" }.map{|k,v| "#{CGI.escape(k.to_s)}=#{CGI.escape(v)}"}.join("&")
+    :state => "project"
+  }.map{
+    |k,v| "#{CGI.escape(k.to_s)}=#{CGI.escape(v)}"
+  }.join("&")
   session = Patron::Session.new
   session.timeout = 10
   response = session.post "https://github.com/login/oauth/access_token", query_string
@@ -96,8 +99,8 @@ get $urls[:OAUTH_CALLBACK] do
   body = CGI::parse response.body
   token = body.has_key?("access_token") && body["access_token"][0]
   response = session.get "https://api.github.com/user/repos?access_token=#{token}"
-  return 'oh noes' if response.status >= 400
-  @repos = JSON.parse response.body
+.status >= 400
+  @repos = JSON.parse response.body 
   # XXXX: Make sure this is over HTTPS!
   @token = token
   haml :select_repo
