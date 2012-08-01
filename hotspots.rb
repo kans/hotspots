@@ -29,9 +29,11 @@ configure do
       name = project.name
       projects[org] ||= {}
       projects[org][name] = project
+      project.init_git
       project.add_events
       project.set_hooks
     rescue Exception => e
+      debugger
       puts e, e.backtrace
     end
   end

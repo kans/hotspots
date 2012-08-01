@@ -11,15 +11,16 @@ include FileUtils
 
 
 class Project < Sequel::Model
+  one_to_many :events
   plugin :schema
   set_schema do
     primary_key :id
     String :access_token
     String :org, null: false
     String :name, null: false
+    # TODO: remove me?
     String :last_sha
     unique [:org, :name]
-    one_to_many :event
   end
 
   @@Fix = Struct.new(:project_id, :date, :sha, :file)
@@ -32,16 +33,19 @@ class Project < Sequel::Model
   end
 
   def initialize(org, name, clone_url, token)
-    # TODO: fetching projects from the DB causes a git clone. probbaly want to fix this
     super(org: org, name: name, access_token: token)
-    @hotspots = Hash.new(0)
+    self.init_git()
+  end
+
+  def init_git()
+    @hotspots ||= Hash.new(0)
     @dir = File.expand_path("#{$settings['project_dir']}/#{self.org}/#{self.name}")
-    debugger
     mkdir_p(@dir, mode: 0755)
     @grit_git = Grit::Git.new @dir
 
     @login = $settings['login']
     @password = CGI::escape $settings['password']
+    # TODO: use clone_url and token
     process = @grit_git.clone({progress: true, process_info: true, timeout: 30},
       "https://#{@login}:#{@password}@github.com/#{self.org}/#{self.name}", @dir)
     print process[2]
@@ -60,7 +64,7 @@ class Project < Sequel::Model
     puts "Setting hooks for #{self.full_name}"
     hook_url = URI.join $settings['address'], "/api/#{self.org}/#{self.name}"
 
-    github = Github.new basic_auth: "#{self.login}:#{@password}"
+    github = Github.new basic_auth: "#{@login}:#{@password}"
     options = {per_page: 100}
     hooks = github.repos.hooks.all(self.org, self.name, options.dup)
     hooks_to_delete = []
@@ -99,28 +103,35 @@ class Project < Sequel::Model
 
   def add_events()
     puts 'setting spots for ' + self.name
-    last_sha = $DB[:projects].where(id: project_id).get(:last_sha)
     args = []
-    if last_sha
-      args << "^#{last_sha}"
+    if self.last_sha
+      args << "^#{self.last_sha}"
     end
     args << 'master'
     commit_list = @grit_repo.git.rev_list @@opts.dup, args
     fixes = self.get_fixes_from_commits commit_list
 
-    DB::add_events fixes, @grit_repo.head.commit.sha, self.id
+    # TODO: this is super slow and sucky
+    fixes.each do |fix|
+      begin
+        self.add_event date: fix.date, sha: fix.sha, file: fix.file
+      rescue
+        # TODO: Fix
+      end
+    end
+    self.last_sha = @grit_repo.head.commit.sha
+    self.save
   end
 
   def get_hotspots()
     hotspots = Hash.new 0
     now = Time.now
-    debugger
     events = self.events
     return [] if events.empty?
-    denom = now - Time.parse(events.last.date)
+    denom = now - events.last.date
     max = 0
     events.each do |event|
-      t = 1 - ((now - Time.parse(event.date)).to_f / denom )
+      t = 1 - ((now - event.date).to_f / denom )
       hotspots[event.file] += 1/(1+Math.exp((-12*t)+12))
       max = [hotspots[event.file], max].max
     end

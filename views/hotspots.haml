@@ -1,6 +1,6 @@
 - stats = make_stats(@spots, @threshold)
 %a{href:'/'} Home
-#{@repo.name}
+#{@project.name}
 %img{:src=>histogram(stats.danger_zone)}
 %h1 #{stats.danger_zone.length} dangerous files out of #{stats.hotspots.length}
 %h1 #{sprintf('%.1f', stats.danger_percent * 100)}% of files contain #{sprintf('%.1f', @threshold * 100)}% of danger
