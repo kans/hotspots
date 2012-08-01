@@ -99,8 +99,8 @@ get $urls[:OAUTH_CALLBACK] do
   body = CGI::parse response.body
   token = body.has_key?("access_token") && body["access_token"][0]
   response = session.get "https://api.github.com/user/repos?access_token=#{token}"
-.status >= 400
-  @repos = JSON.parse response.body 
+  return 'oh noes' if response.status >= 400
+  @repos = JSON.parse response.body
   # XXXX: Make sure this is over HTTPS!
   @token = token
   haml :select_repo
