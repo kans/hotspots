@@ -36,7 +36,6 @@ class Hotspots < Sinatra::Base
   end
 
   get '/' do
-    debugger
     haml :index, locals:{ :projects => @@projects }
   end
 
@@ -79,23 +78,18 @@ class Hotspots < Sinatra::Base
 
 
   get $urls[:OAUTH_CALLBACK] do
-    code = params[:code]
-
-    query_string = {
+    conn = Faraday.new(:url => 'https://github.com')
+    response = conn.post '/login/oauth/access_token', {
       :client_id => $settings['client_id'],
       :client_secret => $settings['secret'],
-      :code => code,
+      :code => params[:code],
       :state => "project"
-    }.map{
-      |k,v| "#{CGI.escape(k.to_s)}=#{CGI.escape(v)}"
-    }.join("&")
-    session = Patron::Session.new
-    session.timeout = 10
-    response = session.post "https://github.com/login/oauth/access_token", query_string
+    }
     return 'oh noes' if response.status >= 400
     body = CGI::parse response.body
     token = body.has_key?("access_token") && body["access_token"][0]
-    response = session.get "https://api.github.com/user/repos?access_token=#{token}"
+    response = Faraday.new(:url => 'https://api.github.com').get "/user/repos", { 
+      :access_token => token }
     return 'oh noes' if response.status >= 400
     @repos = JSON.parse response.body
     # XXXX: Make sure this is over HTTPS!
