@@ -10,6 +10,7 @@ require 'faraday'
 require 'haml'
 require 'uri'
 require 'oauth2'
+require 'sequel'
 
 $settings = JSON.parse(File.read 'settings.json')
 
@@ -139,7 +140,12 @@ class Hotspots < Sinatra::Base
     repos.each do |repo, clone_url|
       org, name = repo.split "/"
       project = Project.new(org, name, clone_url, token)
-      project.save
+      begin
+        project.save
+      rescue Sequel::DatabaseError
+      else
+        Hotspots.add_project project
+      end
     end
 
     redirect "/", 302
