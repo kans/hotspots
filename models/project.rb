@@ -63,8 +63,12 @@ class Project < Sequel::Model
   def set_hooks()
     puts "Setting hooks for #{self.full_name}"
     hook_url = URI.join $settings['address'], "/api/#{self.org}/#{self.name}"
+    access_token = self.access_token
 
-    github = Github.new basic_auth: "#{@login}:#{@password}"
+    github = Github.new do |config|
+      config.oauth_token = access_token
+      config.adapter = :em_synchrony
+    end
     options = {per_page: 100}
     hooks = github.repos.hooks.all(self.org, self.name, options.dup)
     hooks_to_delete = []
@@ -82,10 +86,13 @@ class Project < Sequel::Model
   end
 
   def comment(pr_id, comment)
-    github = Github.new basic_auth: "#{self.login}:#{@password}"
+    github = Github.new do |config|
+      config.basic_auth = "#{self.login}:#{@password}"
+      config.adapter = :em_synchrony
+    end
     github.issues.comments.create self.org, self.name, pr_id, {body: comment}
   end
- 
+
   def get_fixes_from_commits(commit_list)
     fixes = []
     regex = /fix(es|ed)?|close(s|d)?/i
