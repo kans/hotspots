@@ -3,6 +3,7 @@
 require 'json'
 
 require 'sinatra'
+require 'sinatra/reloader' if development?
 require 'sinatra/synchrony'
 require 'faraday'
 
@@ -10,6 +11,12 @@ require 'haml'
 require 'uri'
 require 'oauth2'
 
+$settings = JSON.parse(File.read 'settings.json')
+
+require './helpers'
+include Helpers
+
+require './models'
 require './urls'
 
 require 'debugger'
@@ -17,10 +24,19 @@ require 'debugger'
 # Debugger.wait_connection = true
 # Debugger.start_remote
 
+
 class Hotspots < Sinatra::Base
-  @@projects = {}
+  @@projects ||= {}
+
+  configure :development do
+    register Sinatra::Reloader
+  end
 
   register Sinatra::Synchrony
+
+  helpers do
+    include Helpers
+  end
 
   before do
     content_type 'text/html'
@@ -105,6 +121,11 @@ class Hotspots < Sinatra::Base
       :access_token => token }
     return 'oh noes' if response.status >= 400
     @repos += JSON.parse(response.body)
+    @repos.each do |repo|
+      org = repo["owner"]["login"]
+      name = repo["name"]
+      repo["checked"] = True if @@projects.has_key?(org) && @@projects[org].has_key?(name)
+    end
     # XXXX: Make sure this is over HTTPS!
     @token = token
     haml :select_repo
@@ -146,3 +167,8 @@ class Hotspots < Sinatra::Base
 end
 
 
+configure do
+  Project.all.each do |project|
+    Hotspots.add_project project
+  end
+end
