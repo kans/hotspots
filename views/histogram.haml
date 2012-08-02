@@ -1,6 +1,6 @@
 %a{href:'/'} Home
 - @projects.each do |org, org_project|
   - org_project.each do |name, project|
-    %h1=repo.name
+    %h1=project.name
     - @project = project
-    %img{:src=>histogram(project.get_hotspots)}
+    %img{:src=>histogram(sort_hotspots(project.get_hotspots))}

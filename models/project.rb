@@ -133,7 +133,8 @@ class Project < Sequel::Model
   def get_hotspots()
     hotspots = Hash.new 0
     now = Time.now
-    events = self.events
+    events = self.events.dup
+    events.sort! { |a,b| b.date.to_i <=> a.date.to_i }
     return [] if events.empty?
     denom = now - events.last.date
     max = 0
