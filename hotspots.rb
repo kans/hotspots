@@ -124,7 +124,7 @@ class Hotspots < Sinatra::Base
     @repos.each do |repo|
       org = repo["owner"]["login"]
       name = repo["name"]
-      repo["checked"] = True if @@projects.has_key?(org) && @@projects[org].has_key?(name)
+      repo["checked"] = true if @@projects.has_key?(org) && @@projects[org].has_key?(name)
     end
     # XXXX: Make sure this is over HTTPS!
     @token = token
