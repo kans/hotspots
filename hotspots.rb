@@ -3,7 +3,6 @@
 require 'json'
 
 require 'sinatra'
-require 'sinatra/reloader' if development?
 require 'sinatra/synchrony'
 require 'faraday'
 
@@ -30,7 +29,6 @@ class Hotspots < Sinatra::Base
   @@projects ||= {}
 
   configure :development do
-    register Sinatra::Reloader
   end
 
   register Sinatra::Synchrony
