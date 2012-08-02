@@ -12,7 +12,6 @@ require 'oauth2'
 
 require './urls'
 
-
 require 'debugger'
 #require 'ruby-debug'
 # Debugger.wait_connection = true
@@ -22,7 +21,11 @@ class Hotspots < Sinatra::Base
   @@projects = {}
 
   register Sinatra::Synchrony
-  
+
+  before do
+    content_type 'text/html'
+  end
+
   def self.add_project project
     @@projects[project.org] ||= {}
     @@projects[project.org][project.name] = project
@@ -78,6 +81,7 @@ class Hotspots < Sinatra::Base
 
 
   get $urls[:OAUTH_CALLBACK] do
+    @repos = []
     conn = Faraday.new(:url => 'https://github.com')
     response = conn.post '/login/oauth/access_token', {
       :client_id => $settings['client_id'],
@@ -88,10 +92,19 @@ class Hotspots < Sinatra::Base
     return 'oh noes' if response.status >= 400
     body = CGI::parse response.body
     token = body.has_key?("access_token") && body["access_token"][0]
-    response = Faraday.new(:url => 'https://api.github.com').get "/user/repos", { 
+    conn = Faraday.new(:url => 'https://api.github.com')
+    response = conn.get "/user/orgs", { 
+      :access_token => token }
+    orgs = JSON.parse response.body
+    orgs.each do |org|
+      response = conn.get "/orgs/#{org["login"]}/repos", { 
+        :access_token => token }
+      @repos += JSON.parse(response.body)
+    end
+    response = conn.get "/user/repos", {
       :access_token => token }
     return 'oh noes' if response.status >= 400
-    @repos = JSON.parse response.body
+    @repos += JSON.parse(response.body)
     # XXXX: Make sure this is over HTTPS!
     @token = token
     haml :select_repo
