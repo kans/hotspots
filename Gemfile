@@ -9,12 +9,14 @@ gem "grit", ">=2.5.0"
 gem "github_api", ">=0.6.0"
 gem "haml", ">=3.1.6"
 gem "sinatra", ">=1.3.2"
+gem "sinatra-contrib"
 gem "gchartrb", ">=0.8"
 gem "sequel", ">=3.37.0"
 gem "thin"
 gem "sinatra-synchrony"
 gem "faraday"
+gem "sqlite3-ruby"
 
 group :dev do
-  gem 'ruby-debug19', :require => 'ruby-debug'
+  gem 'debugger'
 end
