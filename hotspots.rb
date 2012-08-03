@@ -134,6 +134,41 @@ class Hotspots < Sinatra::Base
   post $urls[:ADD_REPOS] do
     repos = request.POST
     token = repos.delete "token"
+    orgs = {}
+
+    repos.each do |repo, clone_url|
+      org, name = repo.split "/"
+      orgs[org] ||= []
+      orgs[org] += [repo]
+    end
+
+    conn = Faraday.new(:url => 'https://api.github.com')
+
+    teams = {}
+    orgs.each do |org, repos|
+      response = conn.get "/orgs/#{org}/teams", {
+        :access_token => token }
+      teams[org] = JSON.parse response.body
+    end
+
+    teams.each do |org, teams_array|
+      create_team = true
+      teams_array.each do |team|
+        debugger
+        # THIS IS BROKEN
+        if team['name'] == $settings['team_name']
+          create_team = false
+          break
+        end
+      end
+      if create_team
+        conn.post "/orgs/#{org}/teams", {
+          :name => $settings['team_name'],
+          :permission => "pull",
+          :repo_names => orgs[org]
+        }
+      end
+    end
 
     repos.each do |repo, clone_url|
       org, name = repo.split "/"
