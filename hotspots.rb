@@ -1,10 +1,14 @@
 #!/usr/bin/env ruby
 
 require 'json'
+require 'set'
 
-require 'sinatra'
-require 'sinatra/synchrony'
+require 'sinatra/async'
 require 'faraday'
+require 'sinatra/synchrony'
+#require "em-synchrony"
+require "em-synchrony/em-http"
+require "em-synchrony/fiber_iterator"
 
 require 'haml'
 require 'uri'
@@ -18,7 +22,7 @@ include Helpers
 
 require './models'
 require './urls'
-
+  
 require 'debugger'
 #require 'ruby-debug'
 # Debugger.wait_connection = true
@@ -31,6 +35,7 @@ class Hotspots < Sinatra::Base
   configure :development do
   end
 
+  register Sinatra::Async
   register Sinatra::Synchrony
 
   helpers do
@@ -46,8 +51,8 @@ class Hotspots < Sinatra::Base
     @@projects[project.org][project.name] = project
     begin
       project.init_git
-      project.add_events
-      project.set_hooks
+      # project.add_events
+      # project.set_hooks
     rescue Exception => e
       puts e, e.backtrace
     end
@@ -135,53 +140,80 @@ class Hotspots < Sinatra::Base
     repos = request.POST
     token = repos.delete "token"
     orgs = {}
+    urls = Set.new
 
     repos.each do |repo, clone_url|
       org, name = repo.split "/"
       orgs[org] ||= []
       orgs[org] += [repo]
+      urls <<  "/orgs/#{org}/teams"
     end
 
-    conn = Faraday.new(:url => 'https://api.github.com')
+    multi = EventMachine::Synchrony::Multi.new
+    _redirect = Proc.new {
+      #p multi.responses[:callback][:"/orgs/racker/teams"]
+      debugger
+      redirect "/", 302
+    }
 
-    teams = {}
-    orgs.each do |org, repos|
-      response = conn.get "/orgs/#{org}/teams", {
-        :access_token => token }
-      teams[org] = JSON.parse response.body
-    end
-
-    teams.each do |org, teams_array|
-      create_team = true
-      teams_array.each do |team|
-        debugger
-        # THIS IS BROKEN
-        if team['name'] == $settings['team_name']
-          create_team = false
-          break
-        end
+    EventMachine.synchrony do
+      http = EventMachine::HttpRequest.new('https://api.github.com')
+      urls.each do |url|
+        multi.add url, http.aget( path: url, query: { :access_token => token })
       end
-      if create_team
-        conn.post "/orgs/#{org}/teams", {
-          :name => $settings['team_name'],
-          :permission => "pull",
-          :repo_names => orgs[org]
-        }
-      end
+      multi.callback &_redirect
+      multi.perform
+      EventMachine.stop
     end
+    # teams = {}
+    # orgs.each do |org, repos|
+    #   response = conn.get "/orgs/#{org}/teams", {
+    #     :access_token => token }
+    #   teams[org] = 
+    # end
+    # teams_to_make = []
+    # teams.each do |org, teams_array|
+    #   create_team = true
+    #   teams_array.each do |team|
+    #     # THIS IS BROKEN
+    #     if team['name'] == $settings['team_name']
+    #       create_team = false
+    #       break
+    #     end
+    #   end
+    #   if create_team
+    #     teams_to_make <<  ["/orgs/#{org}/teams", {
+    #       :name => $settings['team_name'],
+    #       :permission => "pull",
+    #       :repo_names => orgs[org]
+    #     }]
+    #   end
+    # end
 
-    repos.each do |repo, clone_url|
-      org, name = repo.split "/"
-      project = Project.new(org, name, clone_url, token)
-      begin
-        project.save
-      rescue Sequel::DatabaseError
-      else
-        Hotspots.add_project project
-      end
-    end
+    # debugger
 
-    redirect "/", 302
+    # EM.synchrony do
+    #   urls = ['http://url.1.com', 'http://url2.com']
+    #   results = []
+
+    #   EM::Synchrony::FiberIterator.new(urls, 5).each do |url|
+    #       resp = EventMachine::HttpRequest.new(url).get
+    #   results.push resp.response
+    # end
+
+    # p results # all completed requests
+
+    # repos.each do |repo, clone_url|
+    #   org, name = repo.split "/"
+    #   project = Project.new(org, name, clone_url, token)
+    #   begin
+    #     project.save
+    #   rescue Sequel::DatabaseError
+    #   else
+    #     Hotspots.add_project project
+    #   end
+    # end
+
   end
 
 

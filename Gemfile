@@ -16,6 +16,7 @@ gem "thin"
 gem "sinatra-synchrony"
 gem "faraday"
 gem "sqlite3-ruby"
+gem "em-synchrony", ">=1.0.0"
 
 group :dev do
   gem 'debugger'
