@@ -3,7 +3,6 @@
 require 'json'
 require 'set'
 
-require 'sinatra/async'
 require 'faraday'
 require 'sinatra/synchrony'
 #require "em-synchrony"
@@ -35,7 +34,6 @@ class Hotspots < Sinatra::Base
   configure :development do
   end
 
-  register Sinatra::Async
   register Sinatra::Synchrony
 
   helpers do
