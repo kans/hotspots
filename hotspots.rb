@@ -26,14 +26,33 @@ require 'debugger'
 # Debugger.wait_connection = true
 # Debugger.start_remote
 
-
 class Hotspots < Sinatra::Base
-  @@projects ||= {}
+  
+  register Sinatra::Synchrony
 
+  @@projects ||= {}
+  @@Request = Struct.new :name, :path, :query, :body, :headers
+  @@Response = Struct.new(:body, :path, :status, :headers) do 
+    def initialize response
+      args = []
+
+      begin
+        body = JSON.parse response.response
+      rescue
+        body = response.response
+      end
+      
+      args << body
+      args << response.req.path
+      args << response.response_header["STATUS"].split[0].to_i
+      args << response.response_header
+
+      super(*args)
+    end
+  end
+  
   configure :development do
   end
-
-  register Sinatra::Synchrony
 
   helpers do
     include Helpers
@@ -41,6 +60,28 @@ class Hotspots < Sinatra::Base
 
   before do
     content_type 'text/html'
+  end
+
+  def multi method, host, requests
+    multi = EventMachine::Synchrony::Multi.new
+    requests.each do |request|
+      multi.add request.name, EventMachine::HttpRequest.new(host).send(method, Hash[request.each_pair.to_a])
+    end
+    callbacks, errbacks = multi.perform.responses.values
+
+    res = {}; errs = {}
+    callbacks.each do |key, value|
+      if value.response_header["STATUS"].split[0].to_i < 400
+        res[key] =  @@Response.new value
+      else
+        errs[key] = @@Response.new value
+      end
+    end
+    
+    errbacks.each do |key, value|
+      errs[key] = @@Response.new value
+    end
+    return [res, errs]
   end
 
   def self.add_project project
@@ -132,71 +173,85 @@ class Hotspots < Sinatra::Base
     haml :select_repo
   end
 
-
   post $urls[:ADD_REPOS] do
     repos = request.POST
     token = repos.delete "token"
-    org_to_repos = {}
-    org_to_url = {}
 
+    @repos_added = {:success => {}, :failed => {}}
+
+    org_to_repos_full_name = {}
+    org_to_url = {}
+    requests = []
+
+    # get orgs from github
     repos.each do |repo, clone_url|
       org, name = repo.split "/"
-      org_to_repos[org] ||= []
-      org_to_repos[org] += [repo]
-      org_to_url[org] = "/orgs/#{org}/teams"
+      org_to_repos_full_name[org] ||= []
+      org_to_repos_full_name[org] += [repo]
+      path = "/orgs/#{org}/teams"
+      org_to_url[org] = path
+      requests << @@Request.new(org, path, { :access_token => token })
     end
 
-    # get team ids (see if orgs are acutally orgs too)
-    multi = EventMachine::Synchrony::Multi.new
-    org_to_url.each do |org, url|
-      multi.add org, EventMachine::HttpRequest.new('https://api.github.com').aget( path: url, query: { :access_token => token })
+    successful_org_gets, errs = multi :aget, 'https://api.github.com', requests
+
+    #TODO: use function to reduce variable spanning
+    # add user to repos that aren't a org
+    requests = []
+    errs.select {|login, err| err.status == 404 }.each do |login, err|
+      org_to_repos_full_name[login].each do |repo|
+        requests << @@Request.new( repo, "/repos/#{repo}/collaborators/#{$settings["login"]}", {:access_token => token })
+      end
     end
-
-    callbacks, errbacks = multi.perform.responses.values
-
+    
+    unless requests.empty?
+      good, bad = multi(:aput, 'https://api.github.com', requests)
+      @repos_added[:success].merge! good
+      @repos_added[:failed].merge! bad
+    end
+    
     add_user_to_team = []
-    teams_to_make = {}
-    callbacks.each do |org, value|
-      next if value.response_header["STATUS"].split[0].to_i >= 400
-      json = JSON.parse value.response
+    make_team_for_org = []
+    successful_org_gets.each do |org, reply|
       create_team = true
-      json.each do |team|
+      reply.body.each do |team|
         if team['name'] == $settings['team_name']
           create_team = false
-          add_user_to_team << "/teams/#{team['id']}/members/#{$settings['login']}"
+          add_user_to_team << team["id"]
+          break
         end
       end
       if create_team
-        teams_to_make[org_to_url[org]] = {
-          :name => $settings['team_name'],
-          :permission => "pull",
-          :repo_names => org_to_repos[org]
-        }
+        make_team_for_org << org
       end
     end
 
     # create teams
-    unless teams_to_make.empty?
-      multi = EventMachine::Synchrony::Multi.new
-      teams_to_make.each do |url, data|
-        multi.add url, EventMachine::HttpRequest.new('https://api.github.com').apost(
-          path: url, body: data.to_json, query: {:access_token => token }, headers: {"content-type"=> "application/json"})
+    unless make_team_for_org.empty?
+      requests = []
+      make_team_for_org.each do |org|
+        requests << @@Request.new(org, [org_to_url[org]], {:access_token => token }, {
+          :name => $settings['team_name'],
+          :permission => "pull",
+          :repo_names => org_to_repos_full_name[org]
+        }, {"content-type"=> "application/json"})
       end
-      callbacks, errbacks = multi.perform.responses.values
-      multi = EventMachine::Synchrony::Multi.new
+
+      callbacks, errbacks = multi :apost, 'https://api.github.com', requests
+
       callbacks.each do |create_team_url, value|
-        next if value.response_header["STATUS"].split[0].to_i >= 400
-        json = JSON.parse value.response
-        add_user_to_team << "/teams/#{json['id']}/members/#{$settings['login']}"
+        add_user_to_team << value.body['id']
       end
     end
 
-    multi = EventMachine::Synchrony::Multi.new
-    add_user_to_team.each do |add_user_url|
-      multi.add add_user_url, EventMachine::HttpRequest.new('https://api.github.com').aput(
-        path: add_user_url, query: {:access_token => token })
+    requests = []
+    add_user_to_team.each do |team_id|
+      requests << @@Request.new(team_id, "/teams/#{team_id}/members/#{$settings['login']}", {:access_token => token })
     end
-    @callbacks, @errbacks = multi.perform.responses.values
+
+    good, bad = multi(:aput, 'https://api.github.com', requests)
+    @repos_added[:success].merge! good
+    @repos_added[:failed].merge! bad
 
     haml :added_users
   end
