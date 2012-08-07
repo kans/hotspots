@@ -144,7 +144,6 @@ class Hotspots < Sinatra::Base
     repos = request.POST
     token = repos.delete "token"
 
-    Org = Struct.new :repos, :url
     org_to_repos = {}
     org_to_url = {}
     requests = []
@@ -191,7 +190,7 @@ class Hotspots < Sinatra::Base
       end
 
       callbacks, errbacks = multi :apost, requests
-      multi = EventMachine::Synchrony::Multi.new
+
       callbacks.each do |create_team_url, value|
         next if value.response_header["STATUS"].split[0].to_i >= 400
         json = JSON.parse value.response
@@ -203,9 +202,8 @@ class Hotspots < Sinatra::Base
     add_user_to_team.each do |team_id|
       requests << @@Request.new(team_id,'https://api.github.com', "/teams/#{team_id}/members/#{$settings['login']}", {:access_token => token })
     end
-    results = multi(:aput, requests)
 
-    @callbacks, @errbacks = results
+    @callbacks, @errbacks = multi(:aput, requests)
 
     haml :added_users
   end
