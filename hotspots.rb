@@ -146,6 +146,7 @@ class Hotspots < Sinatra::Base
       org_to_url[org] = "/orgs/#{org}/teams"
     end
 
+    # get team ids (see if orgs are acutally orgs too)
     multi = EventMachine::Synchrony::Multi.new
     org_to_url.each do |org, url|
       multi.add org, EventMachine::HttpRequest.new('https://api.github.com').aget( path: url, query: { :access_token => token })
@@ -153,21 +154,18 @@ class Hotspots < Sinatra::Base
 
     callbacks, errbacks = multi.perform.responses.values
 
+    add_user_to_team = []
     teams_to_make = {}
-
     callbacks.each do |org, value|
-
       next if value.response_header["STATUS"].split[0].to_i >= 400
-
-      org_query_response = JSON.parse value.response
-
+      json = JSON.parse value.response
       create_team = true
-      org_query_response.each do |team|
+      json.each do |team|
         if team['name'] == $settings['team_name']
-          create_team = false 
+          create_team = false
+          add_user_to_team << "/teams/#{team['id']}/members/#{$settings['login']}"
         end
       end
-
       if create_team
         teams_to_make[org_to_url[org]] = {
           :name => $settings['team_name'],
@@ -178,26 +176,29 @@ class Hotspots < Sinatra::Base
     end
 
     # create teams
-    multi = EventMachine::Synchrony::Multi.new
-    teams_to_make.each do |url, data|
-      multi.add url, EventMachine::HttpRequest.new('https://api.github.com').apost( 
-        path: url, body: data.to_json, query: {:access_token => token }, headers: {"content-type"=> "application/json"})
+    unless teams_to_make.empty?
+      multi = EventMachine::Synchrony::Multi.new
+      teams_to_make.each do |url, data|
+        multi.add url, EventMachine::HttpRequest.new('https://api.github.com').apost( 
+          path: url, body: data.to_json, query: {:access_token => token }, headers: {"content-type"=> "application/json"})
+      end
+      callbacks, errbacks = multi.perform.responses.values
+      multi = EventMachine::Synchrony::Multi.new
+      callbacks.each do |create_team_url, value|
+        next if value.response_header["STATUS"].split[0].to_i >= 400
+        json = JSON.parse value.response
+        add_user_to_team << "/teams/#{json['id']}/members/#{$settings['login']}"
+      end
     end
 
-    callbacks, errbacks = multi.perform.responses.values
-
     multi = EventMachine::Synchrony::Multi.new
-    callbacks.each do |create_team_url, value|
-      next if value.response_header["STATUS"].split[0].to_i >= 400
-
-      json = JSON.parse value.response
-
-      url = "/teams/#{json['id']}/members/#{$settings['login']}"
-      multi.add url, EventMachine::HttpRequest.new('https://api.github.com').aput( 
-        path: url, query: {:access_token => token })
+    add_user_to_team.each do |add_user_url|
+      multi.add add_user_url, EventMachine::HttpRequest.new('https://api.github.com').aput( 
+        path: add_user_url, query: {:access_token => token })
     end
+    @callbacks, @errbacks = multi.perform.responses.values
 
-    callbacks, errbacks = multi.perform.responses.values
+    haml :added_users
   end
 
 
