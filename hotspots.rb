@@ -20,7 +20,7 @@ include Helpers
 
 require './models'
 require './urls'
-  
+
 require 'debugger'
 #require 'ruby-debug'
 # Debugger.wait_connection = true
@@ -110,11 +110,11 @@ class Hotspots < Sinatra::Base
     body = CGI::parse response.body
     token = body.has_key?("access_token") && body["access_token"][0]
     conn = Faraday.new(:url => 'https://api.github.com')
-    response = conn.get "/user/orgs", { 
+    response = conn.get "/user/orgs", {
       :access_token => token }
     orgs = JSON.parse response.body
     orgs.each do |org|
-      response = conn.get "/orgs/#{org["login"]}/repos", { 
+      response = conn.get "/orgs/#{org["login"]}/repos", {
         :access_token => token }
       @repos += JSON.parse(response.body)
     end
@@ -179,7 +179,7 @@ class Hotspots < Sinatra::Base
     unless teams_to_make.empty?
       multi = EventMachine::Synchrony::Multi.new
       teams_to_make.each do |url, data|
-        multi.add url, EventMachine::HttpRequest.new('https://api.github.com').apost( 
+        multi.add url, EventMachine::HttpRequest.new('https://api.github.com').apost(
           path: url, body: data.to_json, query: {:access_token => token }, headers: {"content-type"=> "application/json"})
       end
       callbacks, errbacks = multi.perform.responses.values
@@ -193,7 +193,7 @@ class Hotspots < Sinatra::Base
 
     multi = EventMachine::Synchrony::Multi.new
     add_user_to_team.each do |add_user_url|
-      multi.add add_user_url, EventMachine::HttpRequest.new('https://api.github.com').aput( 
+      multi.add add_user_url, EventMachine::HttpRequest.new('https://api.github.com').aput(
         path: add_user_url, query: {:access_token => token })
     end
     @callbacks, @errbacks = multi.perform.responses.values
