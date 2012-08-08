@@ -4,5 +4,5 @@ $urls = {
   :HOTSPOTS       => "/hotspots/:org/:name",
   :GITHUB_HOOK    => "/api/:org/:name",
   :HISTOGRAM      => "/histogram",
-  :REMOVE_REPOS   => "/remove_repos"
+  :REMOVE_REPOS   => "/remove_repos",
 }

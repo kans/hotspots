@@ -224,7 +224,7 @@ class Hotspots < Sinatra::Base
       login = full_name.split('/')[0]
       org_to_repos_full_name[login].each do |repo|
         next if repos_seen.include? repo
-        req = @@Request.new( repo, 
+        req = @@Request.new( repo,
           "/repos/#{repo}/collaborators/#{$settings["login"]}", {:access_token => token })
         add_user_to_nonorg_requests << req
         repos_seen << repo
