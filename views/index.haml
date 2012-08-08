@@ -1,9 +1,12 @@
-%h1 Projects
-%ul
-  - projects.each do |org_name, org|
-    - org.each do |name, repo|
-      %li
-        %a{href:"/hotspots/#{repo.org}/#{name}"} #{repo.org}/#{name}
-
-%h1 Add Project
-%a{href:"https://github.com/login/oauth/authorize?scope=repo&client_id=#{$settings['client_id']}&redirect_uri=#{$settings['address']}/oauth/callback/"} Sign in with Github
+%div.row-fluid
+  %div.span2
+    %div.sidebar-nav
+      %h2 Projects
+      %ul.nav.nav-list
+        - projects.each do |org_name, org|
+          %li.nav-header=org_name
+          - org.each do |name, repo|
+            %li
+              %a{href:"/hotspots/#{repo.org}/#{name}"} #{name}
+  To add more projects,
+  %a.btn.btn-primary{href:"https://github.com/login/oauth/authorize?scope=repo&client_id=#{$settings['client_id']}&redirect_uri=#{$settings['address']}/oauth/callback/"} Sign in with Github

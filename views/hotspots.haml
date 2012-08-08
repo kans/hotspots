@@ -1,12 +1,12 @@
 - stats = make_stats(@spots, @threshold)
-%a{href:'/'} Home
-%h1
-  %a{href: "https://github.com/#{@project.org}/#{@project.name}"}=@project.name
-%img{:src=>histogram(stats.danger_zone)}
-%h1 #{stats.danger_zone.length} dangerous files out of #{stats.hotspots.length}
-%h1 #{sprintf('%.1f', stats.danger_percent * 100)}% of files contain #{sprintf('%.1f', @threshold * 100)}% of danger
-%table
-  - stats.danger_zone.each do |file,score|
-    %tr
-      %td #{sprintf('%.2f',score * 100)}%
-      %td=file
+%div.row-fluid
+  %h1
+    %a{href: "https://github.com/#{@project.org}/#{@project.name}"}="#{@project.org}/#{@project.name}"
+  %img{:src=>histogram(stats.danger_zone)}
+  %h1 #{stats.danger_zone.length} dangerous files out of #{stats.hotspots.length}
+  %h1 #{sprintf('%.1f', stats.danger_percent * 100)}% of files contain #{sprintf('%.1f', @threshold * 100)}% of danger
+  %table
+    - stats.danger_zone.each do |file,score|
+      %tr
+        %td #{sprintf('%.2f',score * 100)}%
+        %td=file
