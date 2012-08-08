@@ -117,7 +117,11 @@ class Project < Sequel::Model
   end
 
   def comment(pr_id, comment)
-    self.Github.issues.comments.create self.org, self.name, pr_id, {body: comment}
+    github = Github.new do |config|
+      config.basic_auth = "#{self.login}:#{@password}"
+      config.adapter = :em_synchrony
+    end
+    github.issues.comments.create self.org, self.name, pr_id, {body: comment}
   end
 
   def get_fixes_from_commits(commit_list)
