@@ -1,11 +1,10 @@
 %div.row-fluid
-  %h1 Select Repositories
-%div.row-fluid
   %form.form-horizontal{action:$urls[:ADD_REPOS], method:"POST"}
-    %ul
-      - @repos.each do |repo|
-        - name = repo["full_name"]
-        %li
+    %fieldset
+      %legend Select Repositories
+      %div.control-group
+        - @repos.each do |repo|
+          - name = repo["full_name"]
           <!-- XXXX: if repo or org name changes, things will break here! -->
           %label.checkbox{ for: name }
             <input type="checkbox" name="#{name}" value="#{repo["clone_url"]}" id="#{name}"
@@ -13,6 +12,6 @@
               checked="checked"
             >
             = name
-    %input{ type:"hidden", name: "token", value: @token }
-    %div.form-actions
-      %button.btn.btn-primary{ type:"submit"} Add Projects
+      %input{ type:"hidden", name: "token", value: @token }
+      %div.form-actions
+        %button.btn.btn-primary{ type:"submit"} Add Projects
