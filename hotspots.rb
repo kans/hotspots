@@ -170,6 +170,7 @@ class Hotspots < Sinatra::Base
     end
     # XXXX: Make sure this is over HTTPS!
     @token = token
+    @repos.sort_by! {|repo| repo["full_name"]}
     haml :select_repo
   end
 
