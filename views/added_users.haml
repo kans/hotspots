@@ -1,10 +1,5 @@
 %h1 Users
 %ul 
   Added
-  - @repos_added[:success].each do |name, resp|
-    %li #{name}: #{resp}
-
-%ul 
-  Failed
-  - @repos_added[:failed].each do |name, resp|
-    %li #{name}: #{resp}
+  - @added_repos.each do |name|
+    %li #{name}

@@ -174,6 +174,7 @@ class Hotspots < Sinatra::Base
   end
 
   post $urls[:ADD_REPOS] do
+    @added_repos = []
     repos = request.POST
     token = repos.delete "token"
 
@@ -182,7 +183,6 @@ class Hotspots < Sinatra::Base
     org_to_url = {}
 
     requests = []
-    repos_to_add = []
 
     # get orgs from github
     repos.each do |full_name, clone_url|
@@ -191,8 +191,12 @@ class Hotspots < Sinatra::Base
       org_to_repos_full_name[org] += [full_name]
       path = "/orgs/#{org}/teams"
       org_to_url[org] = path
-      requests << @@Request.new(full_name, path, { :access_token => token })
+      unless @@projects[org] && @@projects[org][name]
+        requests << @@Request.new(full_name, path, { :access_token => token })
+      end
     end
+
+    return haml :added_users if requests.empty?
 
     successful_org_gets, errs = multi :aget, 'https://api.github.com', requests
 
@@ -228,41 +232,48 @@ class Hotspots < Sinatra::Base
 
     # create teams
     unless make_team_for_org.empty?
-      requests = []
+      create_team_requests = []
       make_team_for_org.each do |org|
-        requests << @@Request.new(org, [org_to_url[org]], {:access_token => token }, {
+        create_team_requests << @@Request.new(org, [org_to_url[org]], {:access_token => token }, {
           :name => $settings['team_name'],
           :permission => "pull",
           :repo_names => org_to_repos_full_name[org]
         }, {"content-type"=> "application/json"})
       end
 
-      callbacks, errbacks = multi :apost, 'https://api.github.com', requests
+      callbacks, errbacks = multi :apost, 'https://api.github.com', create_team_requests
 
       # if we failed to make a team for an org, all repos failed
-      errbacks.each do {|org, value| failed_to_add += org_to_repos_full_name[org] }
+      errbacks.each {|org, value| failed_to_add += org_to_repos_full_name[org] }
 
       callbacks.each do |create_team_url, value|
         add_user_to_team << value.body['id']
       end
     end
 
-    requests = []
+    add_user_requests = []
     add_user_to_team.each do |team_id|
-      requests << @@Request.new(team_id, "/teams/#{team_id}/members/#{$settings['login']}", {:access_token => token })
+      add_user_requests << @@Request.new(team_id, "/teams/#{team_id}/members/#{$settings['login']}", {:access_token => token })
     end
 
-    callbacks, errbacks = multi(:aput, 'https://api.github.com', requests)
+    unless add_user_requests.emtpy?
+      callbacks, errbacks = multi(:aput, 'https://api.github.com', add_user_requests)
+    end
 
-    @added_repos = repos.keys - failed_to_add.to_a
+    @added_repos += repos.keys - failed_to_add.to_a
     @added_repos.each do |name|
       project = Project.new name, token
       project.save
       #TODO: move to a thread or something magical
       Hotspots.add_project project
     end
-
+    #TODO: something sane if we can't add a user... the user may already exist, or the project
+    # could be open source and we didn't need to, etc etc.
     haml :added_users
+  end
+
+  def create_team_for_orgs orgs
+
   end
 
 
