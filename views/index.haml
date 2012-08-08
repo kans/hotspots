@@ -3,14 +3,14 @@
     %div.sidebar-nav
       %h2 Projects
       %ul.nav.nav-list
-        - projects.each do |org_name, org|
-          %li.nav-header=org_name
-          - org.each do |name, repo|
-            %li
-              %a{href:"/hotspots/#{repo.org}/#{name}"} #{name}
-  To add more projects,
-  %a.btn.btn-primary{href:"https://github.com/login/oauth/authorize?scope=repo&client_id=#{$settings['client_id']}&redirect_uri=#{$settings['address']}/oauth/callback/"} Sign in with Github
-  %hr
-  Remove
-  %a.btn.btn-primary{href:"/remove_repos"} Projects
+        %form{action: "#{$urls[:REMOVE_PROJECTS]}", method: "POST"}
+          - projects.each do |org_name, org|
+            %li.nav-header=org_name
+            - org.each do |name, repo|
+              %li
+                %input{type:"checkbox", name: repo.id }
+                %a{href:"/hotspots/#{repo.org}/#{name}"} #{name} 
+          %hr
+          %input.btn.btn-danger{type: "submit", value: "remove selected"}                
+  %a.btn.btn-primary{href:"https://github.com/login/oauth/authorize?scope=repo&client_id=#{$settings['client_id']}&redirect_uri=#{$settings['address']}/oauth/callback/"} Add Projects
 
