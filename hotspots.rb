@@ -180,6 +180,7 @@ class Hotspots < Sinatra::Base
   end
 
   post $urls[:REMOVE_REPOS] do
+    @projects = @@projects
     @removed = []
     repos = request.POST
     return haml :remove_repos unless repos

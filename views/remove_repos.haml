@@ -7,6 +7,5 @@
           %label{ for: project.full_name }
             %input{type:"checkbox", name:project.full_name, value:project.id, id:project.full_name}
             = project.full_name
-      %input{ type:"hidden", name: "token", value: @token }
       %div.form-actions
         %button.btn.btn-danger{ type:"submit"} Remove Projects
