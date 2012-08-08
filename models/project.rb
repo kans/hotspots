@@ -32,7 +32,8 @@ class Project < Sequel::Model
     return "#{self.org}/#{self.name}"
   end
 
-  def initialize(org, name, clone_url, token)
+  def initialize(full_name, token)
+    org, name = full_name.split("/")
     super(org: org, name: name, access_token: token)
     self.init_git()
   end
