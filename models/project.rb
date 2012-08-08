@@ -40,10 +40,10 @@ class Project < Sequel::Model
     end
 
     return unless project
+    project.delete_hook
 
     #kill hook
     # kill team access
-
   end
 
   def full_name()
@@ -79,48 +79,45 @@ class Project < Sequel::Model
     print process.slice(1,2)
   end
 
-  def delete_hooks()
-
+  def Github()
+    access_token = self.access_token
+    return Github.new do |config|
+      config.oauth_token = access_token
+      config.adapter = :em_synchrony
+    end
   end
 
-  def get_hook_url
+  def get_hook_url()
     URI.join $settings['address'], "/api/#{self.org}/#{self.name}"
   end
 
-  def get_hooks
-    github = Github.new do |config|
-      config.oauth_token = self.access_token
-      config.adapter = :em_synchrony
-    end
-    github.repos.hooks.all(self.org, self.name, {per_page: 100})
+  def get_hooks()
+    self.Github.repos.hooks.all(self.org, self.name, {per_page: 100})
+  end
+
+  def create_hook()
+    self.Github.repos.hooks.create self.org, self.name, name: "web", active: true,
+      events: ["pull_request"], config: {url: self.get_hook_url, content_type: "json"}
   end
 
   def set_hooks()
     puts "Setting hooks for #{self.full_name}"
-    hook_url = self.get_hook_url
-    access_token = self.access_token
+    self.delete_hook
+    self.create_hook
+  end
 
-    hooks = self.get_hooks
-    hooks_to_delete = []
-    hooks.each do |hook|
-      if hook.name == "web" and hook.config.url == hook_url.to_s then
-        puts "Deleting hook #{hook}"
-        hooks_to_delete.push(hook)
+  def delete_hook()
+    to_delete = []
+    self.get_hooks.each do |hook|
+      if hook.name == "web" && hook.config.url == self.get_hook_url.to_s
+        to_delete << hook.id
       end
     end
-    hooks_to_delete.each do |hook|
-      github.repos.hooks.delete self.org, self.name, hook.id
-    end
-    github.repos.hooks.create self.org, self.name, name: "web", active: true,
-      events: ["pull_request"], config: {url: hook_url, content_type: "json"}
+    to_delete.each {|id| self.Github.repos.hooks.delete self.org, self.name, id }
   end
 
   def comment(pr_id, comment)
-    github = Github.new do |config|
-      config.basic_auth = "#{self.login}:#{@password}"
-      config.adapter = :em_synchrony
-    end
-    github.issues.comments.create self.org, self.name, pr_id, {body: comment}
+    self.Github.issues.comments.create self.org, self.name, pr_id, {body: comment}
   end
 
   def get_fixes_from_commits(commit_list)
