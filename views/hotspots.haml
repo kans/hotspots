@@ -1,12 +1,22 @@
 - stats = make_stats(@spots, @threshold)
 %div.row-fluid
   %h1
-    %a{href: "https://github.com/#{@project.org}/#{@project.name}"}="#{@project.org}/#{@project.name}"
-  %img{:src=>histogram(stats.danger_zone)}
-  %h1 #{stats.danger_zone.length} dangerous files out of #{stats.hotspots.length}
-  %h1 #{sprintf('%.1f', stats.danger_percent * 100)}% of files contain #{sprintf('%.1f', @threshold * 100)}% of danger
-  %table
-    - stats.danger_zone.each do |file,score|
-      %tr
-        %td #{sprintf('%.2f',score * 100)}%
-        %td=file
+    - project_url = "https://github.com/#{@project.org}/#{@project.name}"
+    %a{href:project_url}="#{@project.org}/#{@project.name}"
+  %div.span6
+    %img{:src=>histogram(stats.danger_zone)}
+    %h2 #{stats.danger_zone.length} dangerous files out of #{stats.hotspots.length}
+    %h2 #{sprintf('%.1f', stats.danger_percent * 100)}% of files contain #{sprintf('%.1f', @threshold * 100)}% of danger
+  %div.span6
+    %table.table.table-bordered.table-condensed
+      %thead
+        %tr
+          %th Danger
+          %th File
+      - stats.danger_zone.each do |file,score|
+        %tr
+          %td
+            %div.progress.progress-warning
+              %div.bar{style:"width: #{score * 100}%"}
+          %td
+            %a{href:"#{project_url}/blob/master/#{file}"}=file
