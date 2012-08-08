@@ -89,8 +89,8 @@ class Hotspots < Sinatra::Base
     @@projects[project.org][project.name] = project
     begin
       project.init_git
-      # project.add_events
-      # project.set_hooks
+      project.add_events
+      project.set_hooks
     rescue Exception => e
       puts e, e.backtrace
     end
@@ -260,7 +260,7 @@ class Hotspots < Sinatra::Base
     good, bad = multi(:aput, 'https://api.github.com', requests)
 
     @added_repos = repos.keys - failed_to_add.to_a
-    added_repos.each do |name|
+    @added_repos.each do |name|
       project = Project.new name, token
       project.save
       #TODO: move to a thread or something magical
