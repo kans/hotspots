@@ -178,10 +178,11 @@ class Hotspots < Sinatra::Base
     token = repos.delete "token"
 
     failed_to_add = Set.new
-
     org_to_repos_full_name = {}
     org_to_url = {}
+
     requests = []
+    repos_to_add = []
 
     # get orgs from github
     repos.each do |full_name, clone_url|
@@ -195,7 +196,6 @@ class Hotspots < Sinatra::Base
 
     successful_org_gets, errs = multi :aget, 'https://api.github.com', requests
 
-    #TODO: use function to reduce variable spanning
     # add user to repos that aren't a org
     requests = Set.new # NOTE: this is stupid, but it works
     errs.select {|full_name, err| err.status == 404 }.each do |full_name, err|
@@ -226,7 +226,6 @@ class Hotspots < Sinatra::Base
       end
     end
 
-
     # create teams
     unless make_team_for_org.empty?
       requests = []
@@ -240,12 +239,8 @@ class Hotspots < Sinatra::Base
 
       callbacks, errbacks = multi :apost, 'https://api.github.com', requests
 
-
-      # TODO: we have lost the full name at this point, either add an org name and parse stuff out later or do something about it earlier
-      failed_to_add += errbacks.keys
-
-
-
+      # if we failed to make a team for an org, all repos failed
+      errbacks.each do {|org, value| failed_to_add += org_to_repos_full_name[org] }
 
       callbacks.each do |create_team_url, value|
         add_user_to_team << value.body['id']
@@ -257,10 +252,10 @@ class Hotspots < Sinatra::Base
       requests << @@Request.new(team_id, "/teams/#{team_id}/members/#{$settings['login']}", {:access_token => token })
     end
 
-    good, bad = multi(:aput, 'https://api.github.com', requests)
+    callbacks, errbacks = multi(:aput, 'https://api.github.com', requests)
 
     @added_repos = repos.keys - failed_to_add.to_a
-    added_repos.each do |name|
+    @added_repos.each do |name|
       project = Project.new name, token
       project.save
       #TODO: move to a thread or something magical
