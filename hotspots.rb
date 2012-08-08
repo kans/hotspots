@@ -27,12 +27,12 @@ require 'debugger'
 # Debugger.start_remote
 
 class Hotspots < Sinatra::Base
-  
+
   register Sinatra::Synchrony
 
   @@projects ||= {}
   @@Request = Struct.new :name, :path, :query, :body, :headers
-  @@Response = Struct.new(:body, :path, :status, :headers) do 
+  @@Response = Struct.new(:body, :path, :status, :headers) do
     def initialize response
       args = []
 
@@ -41,7 +41,7 @@ class Hotspots < Sinatra::Base
       rescue
         body = response.response
       end
-      
+
       args << body
       args << response.req.path
       args << response.response_header["STATUS"].split[0].to_i
@@ -50,7 +50,7 @@ class Hotspots < Sinatra::Base
       super(*args)
     end
   end
-  
+
   configure :development do
   end
 
@@ -77,7 +77,7 @@ class Hotspots < Sinatra::Base
         errs[key] = @@Response.new value
       end
     end
-    
+
     errbacks.each do |key, value|
       errs[key] = @@Response.new value
     end
@@ -197,19 +197,19 @@ class Hotspots < Sinatra::Base
 
     #TODO: use function to reduce variable spanning
     # add user to repos that aren't a org
-    requests = Set.new # NOTE: this is stupid, but it works 
+    requests = Set.new # NOTE: this is stupid, but it works
     errs.select {|full_name, err| err.status == 404 }.each do |full_name, err|
       login = full_name.split('/')[0]
       org_to_repos_full_name[login].each do |repo|
         requests << @@Request.new( full_name, "/repos/#{repo}/collaborators/#{$settings["login"]}", {:access_token => token })
       end
     end
-    
+
     unless requests.empty?
       good, bad = multi(:aput, 'https://api.github.com', requests)
       failed_to_add += bad.keys
     end
-    
+
     add_user_to_team = Set.new
     make_team_for_org = Set.new
     successful_org_gets.each do |full_name, reply|
