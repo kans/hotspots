@@ -28,6 +28,24 @@ class Project < Sequel::Model
 
   attr_accessor :hotspots
 
+  def self.uninstall id
+    project = nil
+    @@projects.each do |org, projects|
+      projects.each do |name, _project|
+        if _project.id == id
+          project = _project
+          break
+        end
+      end
+    end
+
+    return unless project
+
+    #kill hook
+    # kill team access
+
+  end
+
   def full_name()
     return "#{self.org}/#{self.name}"
   end
@@ -61,17 +79,28 @@ class Project < Sequel::Model
     print process.slice(1,2)
   end
 
-  def set_hooks()
-    puts "Setting hooks for #{self.full_name}"
-    hook_url = URI.join $settings['address'], "/api/#{self.org}/#{self.name}"
-    access_token = self.access_token
+  def delete_hooks()
 
+  end
+
+  def get_hook_url
+    URI.join $settings['address'], "/api/#{self.org}/#{self.name}"
+  end
+
+  def get_hooks
     github = Github.new do |config|
-      config.oauth_token = access_token
+      config.oauth_token = self.access_token
       config.adapter = :em_synchrony
     end
-    options = {per_page: 100}
-    hooks = github.repos.hooks.all(self.org, self.name, options.dup)
+    github.repos.hooks.all(self.org, self.name, {per_page: 100})
+  end
+
+  def set_hooks()
+    puts "Setting hooks for #{self.full_name}"
+    hook_url = self.get_hook_url
+    access_token = self.access_token
+
+    hooks = self.get_hooks
     hooks_to_delete = []
     hooks.each do |hook|
       if hook.name == "web" and hook.config.url == hook_url.to_s then

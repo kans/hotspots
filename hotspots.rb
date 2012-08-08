@@ -173,6 +173,21 @@ class Hotspots < Sinatra::Base
     haml :select_repo
   end
 
+  get $urls[:REMOVE_REPOS] do
+    @projects = @@projects
+    haml :remove_repos
+  end
+
+  post $urls[:REMOVE_REPOS] do
+    @removed = []
+    repos = request.POST
+    return haml :remove_repos unless repos
+    repos.each do |full_name, id| 
+
+    end
+    haml :remove_repos
+  end
+
   post $urls[:ADD_REPOS] do
     @added_repos = []
     repos = request.POST
@@ -279,11 +294,6 @@ class Hotspots < Sinatra::Base
     end
     haml :added_users
   end
-
-  def create_team_for_orgs orgs
-
-  end
-
 
   get $urls[:HOTSPOTS] do |org, name|
     @threshold = (params[:threshold] || 0.5).to_f
