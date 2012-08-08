@@ -1,10 +1,12 @@
-%h1 Repos
-%form{action: $urls[:REMOVE_REPOS], method:"POST"}
-  %ul 
-    - @projects.each do |org, repos|
-      - repos.each do |name, project|
-        %li
-          <input type="checkbox" name="#{project.full_name}" value="#{project.id}" id="#{project.full_name}">
-          %label{ for: project.full_name }=project.full_name
-  %input{ type:"hidden", name: "token", value: @token }
-  %input{ type:"submit", value: "Remove Projects" }
+%div.row-fluid
+  %form.form-horizontal{action: $urls[:REMOVE_REPOS], method:"POST"}
+    %fieldset
+      %legend Remove Repositories from Hotspots
+      - @projects.each do |org, repos|
+        - repos.each do |name, project|
+          %label{ for: project.full_name }
+            %input{type:"checkbox", name:project.full_name, value:project.id, id:project.full_name}
+            = project.full_name
+      %input{ type:"hidden", name: "token", value: @token }
+      %div.form-actions
+        %button.btn.btn-danger{ type:"submit"} Remove Projects
