@@ -2,18 +2,18 @@
   %head
     %title
     %link{rel:"stylesheet", type:"text/css", media:"all", href:"/css/bootstrap.css"}
-    %link{rel:"stylesheet", type:"text/css", media:"all", href:"/css/bootstrap-responsive.css"}
     %style{type:"text/css"}
       :plain
         body {
           padding-top: 60px;
           padding-bottom: 40px;
         }
+    %link{rel:"stylesheet", type:"text/css", media:"all", href:"/css/bootstrap-responsive.css"}
   %body
     %div.navbar.navbar-fixed-top
       %div.navbar-inner
-        %div.container
+        %div.container-fluid
           %a.brand{href:"/"} Hotspots
-    %div.container
+    %div.container-fluid
       =yield
     %script{type:"text/javascript", src:"/js/bootstrap.js"}
