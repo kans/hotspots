@@ -1,6 +1,8 @@
 %div.row-fluid
-  %h1 Users
-  %ul
-    Added
+  %h2 Added Repositories
+  %ul.unstyled
     - @added_repos.each do |name, resp|
-      %li #{name}: #{resp}
+      %li
+        Added
+        %a{href:"/hotspots/#{name}"}=name
+  %a.btn.btn-success{href:"/"} Go to Dashboard
