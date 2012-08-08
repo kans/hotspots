@@ -177,42 +177,42 @@ class Hotspots < Sinatra::Base
     repos = request.POST
     token = repos.delete "token"
 
-    @repos_added = {:success => {}, :failed => {}}
+    failed_to_add = Set.new
 
     org_to_repos_full_name = {}
     org_to_url = {}
     requests = []
 
     # get orgs from github
-    repos.each do |repo, clone_url|
-      org, name = repo.split "/"
+    repos.each do |full_name, clone_url|
+      org, name = full_name.split "/"
       org_to_repos_full_name[org] ||= []
-      org_to_repos_full_name[org] += [repo]
+      org_to_repos_full_name[org] += [full_name]
       path = "/orgs/#{org}/teams"
       org_to_url[org] = path
-      requests << @@Request.new(org, path, { :access_token => token })
+      requests << @@Request.new(full_name, path, { :access_token => token })
     end
 
     successful_org_gets, errs = multi :aget, 'https://api.github.com', requests
 
     #TODO: use function to reduce variable spanning
     # add user to repos that aren't a org
-    requests = []
-    errs.select {|login, err| err.status == 404 }.each do |login, err|
+    requests = Set.new # NOTE: this is stupid, but it works 
+    errs.select {|full_name, err| err.status == 404 }.each do |full_name, err|
+      login = full_name.split('/')[0]
       org_to_repos_full_name[login].each do |repo|
-        requests << @@Request.new( repo, "/repos/#{repo}/collaborators/#{$settings["login"]}", {:access_token => token })
+        requests << @@Request.new( full_name, "/repos/#{repo}/collaborators/#{$settings["login"]}", {:access_token => token })
       end
     end
     
     unless requests.empty?
       good, bad = multi(:aput, 'https://api.github.com', requests)
-      @repos_added[:success].merge! good
-      @repos_added[:failed].merge! bad
+      failed_to_add += bad.keys
     end
     
-    add_user_to_team = []
-    make_team_for_org = []
-    successful_org_gets.each do |org, reply|
+    add_user_to_team = Set.new
+    make_team_for_org = Set.new
+    successful_org_gets.each do |full_name, reply|
       create_team = true
       reply.body.each do |team|
         if team['name'] == $settings['team_name']
@@ -222,9 +222,10 @@ class Hotspots < Sinatra::Base
         end
       end
       if create_team
-        make_team_for_org << org
+        make_team_for_org << full_name.split('/')[0]
       end
     end
+
 
     # create teams
     unless make_team_for_org.empty?
@@ -239,6 +240,13 @@ class Hotspots < Sinatra::Base
 
       callbacks, errbacks = multi :apost, 'https://api.github.com', requests
 
+
+      # TODO: we have lost the full name at this point, either add an org name and parse stuff out later or do something about it earlier
+      failed_to_add += errbacks.keys
+
+
+
+
       callbacks.each do |create_team_url, value|
         add_user_to_team << value.body['id']
       end
@@ -250,8 +258,14 @@ class Hotspots < Sinatra::Base
     end
 
     good, bad = multi(:aput, 'https://api.github.com', requests)
-    @repos_added[:success].merge! good
-    @repos_added[:failed].merge! bad
+
+    @added_repos = repos.keys - failed_to_add.to_a
+    added_repos.each do |name|
+      project = Project.new name, token
+      project.save
+      #TODO: move to a thread or something magical
+      Hotspots.add_project project
+    end
 
     haml :added_users
   end
