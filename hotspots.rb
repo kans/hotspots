@@ -201,16 +201,21 @@ class Hotspots < Sinatra::Base
     successful_org_gets, errs = multi :aget, 'https://api.github.com', requests
 
     # add user to repos that aren't a org
-    requests = Set.new # NOTE: this is stupid, but it works
+    add_user_to_nonorg_requests = []
+    repos_seen = []
     errs.select {|full_name, err| err.status == 404 }.each do |full_name, err|
       login = full_name.split('/')[0]
       org_to_repos_full_name[login].each do |repo|
-        requests << @@Request.new( full_name, "/repos/#{repo}/collaborators/#{$settings["login"]}", {:access_token => token })
+        next if repos_seen.include? repo
+        req = @@Request.new( repo, 
+          "/repos/#{repo}/collaborators/#{$settings["login"]}", {:access_token => token })
+        add_user_to_nonorg_requests << req
+        repos_seen << repo
       end
     end
 
-    unless requests.empty?
-      good, bad = multi(:aput, 'https://api.github.com', requests)
+    unless add_user_to_nonorg_requests.empty?
+      good, bad = multi(:aput, 'https://api.github.com', add_user_to_nonorg_requests)
       failed_to_add += bad.keys
     end
 
@@ -256,19 +261,22 @@ class Hotspots < Sinatra::Base
       add_user_requests << @@Request.new(team_id, "/teams/#{team_id}/members/#{$settings['login']}", {:access_token => token })
     end
 
-    unless add_user_requests.emtpy?
+    unless add_user_requests.empty?
       callbacks, errbacks = multi(:aput, 'https://api.github.com', add_user_requests)
     end
 
     @added_repos += repos.keys - failed_to_add.to_a
     @added_repos.each do |name|
-      project = Project.new name, token
-      project.save
-      #TODO: move to a thread or something magical
-      Hotspots.add_project project
+      begin
+        project = Project.new name, token
+        project.save
+      rescue Sequel::DatabaseError => e
+        @added_repos -= [name]
+      else
+        #TODO: move to a thread or something magical
+        Hotspots.add_project project
+      end
     end
-    #TODO: something sane if we can't add a user... the user may already exist, or the project
-    # could be open source and we didn't need to, etc etc.
     haml :added_users
   end
 
