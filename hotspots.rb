@@ -318,7 +318,9 @@ end
 
 
 configure do
-  Project.all.each do |project|
+  projects = Project.all
+  projects.sort_by! {|project| "#{project.org}/#{project.name}"}
+  projects.each do |project|
     Hotspots.add_project project
   end
 end
