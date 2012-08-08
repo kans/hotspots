@@ -2,10 +2,10 @@
   %form.form-horizontal{action:$urls[:ADD_REPOS], method:"POST"}
     %fieldset
       %legend Select Repositories
-      %div.control-group
+      %div.control-group{style:"column-width: 250px; column-gap: 20px; -webkit-column-width: 250px; -webkit-column-gap: 20px; -moz-column-width: 250px; -moz-column-gap: 20px;"}
+        <!-- XXXX: if repo or org name changes, things will break here! -->
         - @repos.each do |repo|
           - name = repo["full_name"]
-          <!-- XXXX: if repo or org name changes, things will break here! -->
           %label.checkbox{ for: name }
             <input type="checkbox" name="#{name}" value="#{repo["clone_url"]}" id="#{name}"
             - if repo["checked"]
