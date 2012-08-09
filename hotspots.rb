@@ -312,22 +312,27 @@ class Hotspots < Sinatra::Base
   end
 end
 
+
 configure do
-  projects = Project.all.sort_by! {|project| "#{project.org}/#{project.name}"}
   # start our own event loop
   EM.synchrony do
+    projects = Project.all
+    res = []
     EM::Synchrony::FiberIterator.new(projects, 10).each do |project|
-      begin
-        project.init_git
-        project.add_events
-        project.set_hooks
-      rescue Exception => e
-        puts e
-      else
+      operation = proc {
+        Fiber.new{
+          project.init_git
+          project.add_events
+          # project.set_hooks
+          res << project
+          project
+        }.resume
+      }
+      callback = proc {|project|
+        EM.stop() if res.length == projects.length
         Hotspots.add_project project
-      end
+      }
+      EM.defer( operation, callback )
     end
-    # kill event loop
-    EventMachine.stop
   end
 end
