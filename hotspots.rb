@@ -314,25 +314,26 @@ end
 
 
 configure do
-  # start our own event loop
+  projects = Project.all
   EM.synchrony do
-    projects = Project.all
     res = []
     EM::Synchrony::FiberIterator.new(projects, 10).each do |project|
       operation = proc {
         Fiber.new{
           project.init_git
           project.add_events
-          # project.set_hooks
-          res << project
-          project
         }.resume
+        project
       }
       callback = proc {|project|
+        res << project
         EM.stop() if res.length == projects.length
-        Hotspots.add_project project
       }
       EM.defer( operation, callback )
     end
+  end
+  projects.each do |project|
+    project.set_hooks
+    Hotspots.add_project project
   end
 end
