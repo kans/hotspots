@@ -6,6 +6,7 @@ require 'set'
 require 'sinatra/synchrony'
 
 require 'faraday'
+require "em-synchrony/fiber_iterator"
 require "em-synchrony/em-http"
 
 require 'haml'
@@ -51,6 +52,11 @@ class Hotspots < Sinatra::Base
     end
   end
 
+  def self.add_project project
+    @@projects[project.org] ||= {}
+    @@projects[project.org][project.name] = project
+  end
+
   configure :development do
   end
 
@@ -82,18 +88,6 @@ class Hotspots < Sinatra::Base
       errs[key] = @@Response.new value
     end
     return [res, errs]
-  end
-
-  def self.add_project project
-    @@projects[project.org] ||= {}
-    @@projects[project.org][project.name] = project
-    begin
-      project.init_git
-      project.add_events
-      project.set_hooks
-    rescue Exception => e
-      puts e, e.backtrace
-    end
   end
 
   get '/' do
@@ -173,6 +167,7 @@ class Hotspots < Sinatra::Base
     @repos.sort_by! {|repo| repo["full_name"]}
     haml :select_repo
   end
+
 
   get $urls[:REMOVE_REPOS] do
     @projects = @@projects
@@ -317,11 +312,22 @@ class Hotspots < Sinatra::Base
   end
 end
 
-
 configure do
-  projects = Project.all
-  projects.sort_by! {|project| "#{project.org}/#{project.name}"}
-  projects.each do |project|
-    Hotspots.add_project project
+  projects = Project.all.sort_by! {|project| "#{project.org}/#{project.name}"}
+  # start our own event loop
+  EM.synchrony do
+    EM::Synchrony::FiberIterator.new(projects, 10).each do |project|
+      begin
+        project.init_git
+        project.add_events
+        project.set_hooks
+      rescue Exception => e
+        puts e
+      else
+        Hotspots.add_project project
+      end
+    end
+    # kill event loop
+    EventMachine.stop
   end
 end

@@ -11,6 +11,7 @@ include FileUtils
 
 
 class Project < Sequel::Model
+
   one_to_many :events
   plugin :schema
   set_schema do
@@ -74,7 +75,7 @@ class Project < Sequel::Model
   end
 
   def pull()
-    puts "Pulling #{self.full_name}, #{@dir}"
+    #puts "Pulling #{self.full_name}, #{@dir}"
     process = @grit_repo.git.pull({progress: true, process_info: true, timeout: 30, chdir: @dir}, "origin", "master")
     print process.slice(1,2)
   end
@@ -101,7 +102,7 @@ class Project < Sequel::Model
   end
 
   def set_hooks()
-    puts "Setting hooks for #{self.full_name}"
+    #puts "Setting hooks for #{self.full_name}"
     self.delete_hook
     self.create_hook
   end
