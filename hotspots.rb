@@ -147,6 +147,7 @@ class Hotspots < Sinatra::Base
 
 
   get $urls[:OAUTH_CALLBACK] do
+    "responsible for showing a list of projects to add after querying github"
     @repos = []
     conn = Faraday.new(:url => 'https://github.com')
     response = conn.post '/login/oauth/access_token', {
@@ -190,6 +191,9 @@ class Hotspots < Sinatra::Base
     repos.each do |id, on|
       project = self.get_project_by_id id
       @@projects[project.org].delete project.name
+      if @@projects[project.org].keys.length == 0
+        @@projects.delete project.org
+      end
       project.uninstall
     end
     redirect '/'
