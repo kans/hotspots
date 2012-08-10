@@ -39,13 +39,13 @@ class Project < Sequel::Model
     end
     if is_org
       teams = self.Github.orgs.teams.all self.org
-      teams.each do |team| 
-        debugger
+      teams.each do |team|
+        
       end
     else
-      debugger
-      self.Github.repos.collaborators.remove self.login self.org $settings['login']
+      self.Github.repos.collaborators.remove self.org, self.name, $settings['login']
     end
+    self.delete
   end
 
   def full_name()

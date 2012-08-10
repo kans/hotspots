@@ -189,6 +189,7 @@ class Hotspots < Sinatra::Base
     return redirect '/' unless repos
     repos.each do |id, on|
       project = self.get_project_by_id id
+      @@projects[project.org].delete project.name
       project.uninstall
     end
     redirect '/'
