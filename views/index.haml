@@ -13,7 +13,9 @@
             - org.each do |name, repo|
               %li
                 %input{type:"checkbox", name: repo.id }
-                %a{href:"/hotspots/#{repo.org}/#{name}"} #{name} 
+                %a{href:"/hotspots/#{repo.org}/#{name}"} #{name}
+                %a{href: "https://github.com/#{repo.org}/#{name}"}
+                  %img{src: "/img/github.png", width: "15px", height: "15px"}
           %br
           %a.btn.btn-primary.btn-danger{onClick: "$('#remove-form').submit();"}
             %i.icon-remove-sign.icon-white
