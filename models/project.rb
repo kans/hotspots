@@ -29,22 +29,23 @@ class Project < Sequel::Model
 
   attr_accessor :hotspots
 
-  def self.uninstall id
-    project = nil
-    @@projects.each do |org, projects|
-      projects.each do |name, _project|
-        if _project.id == id
-          project = _project
-          break
-        end
-      end
+  def uninstall
+    self.delete_hook
+    is_org = true
+    begin
+      org = self.Github.orgs.get self.org
+    rescue Github::Error::GithubError => e
+      is_org = false if e.is_a? Github::Error::NotFound
     end
-
-    return unless project
-    project.delete_hook
-
-    #kill hook
-    # kill team access
+    if is_org
+      teams = self.Github.orgs.teams.all self.org
+      teams.each do |team| 
+        debugger
+      end
+    else
+      debugger
+      self.Github.repos.collaborators.remove self.login self.org $settings['login']
+    end
   end
 
   def full_name()
@@ -102,7 +103,7 @@ class Project < Sequel::Model
   end
 
   def set_hooks()
-    #puts "Setting hooks for #{self.full_name}"
+    puts "Setting hooks for #{self.full_name}"
     self.delete_hook
     self.create_hook
   end

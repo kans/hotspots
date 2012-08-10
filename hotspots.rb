@@ -52,6 +52,20 @@ class Hotspots < Sinatra::Base
     end
   end
 
+  def get_project_by_id id
+    project = nil
+    id = id.to_i
+    @@projects.each do |org, projects|
+    projects.each do |name, _project|
+      if _project.id == id
+        project = _project
+        break
+        end
+      end
+    end
+    project
+  end
+
   def self.add_project project
     @@projects[project.org] ||= {}
     @@projects[project.org][project.name] = project
@@ -168,21 +182,16 @@ class Hotspots < Sinatra::Base
     haml :select_repo
   end
 
-
-  get $urls[:REMOVE_REPOS] do
-    @projects = @@projects
-    haml :remove_repos
-  end
-
-  post $urls[:REMOVE_REPOS] do
+  post $urls[:REMOVE_PROJECTS] do
     @projects = @@projects
     @removed = []
     repos = request.POST
-    return haml :remove_repos unless repos
-    repos.each do |full_name, id| 
-
+    return redirect '/' unless repos
+    repos.each do |id, on|
+      project = self.get_project_by_id id
+      project.uninstall
     end
-    haml :remove_repos
+    redirect '/'
   end
 
   post $urls[:ADD_REPOS] do
