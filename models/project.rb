@@ -37,13 +37,20 @@ class Project < Sequel::Model
     rescue Github::Error::GithubError => e
       is_org = false if e.is_a? Github::Error::NotFound
     end
-    if is_org
-      teams = self.Github.orgs.teams.all self.org
-      teams.each do |team|
-        
-      end
-    else
+
+    unless is_org
       self.Github.repos.collaborators.remove self.org, self.name, $settings['login']
+    else
+      teams = self.Github.orgs.teams.all self.org
+      remove_access = []
+      teams.each do |team|
+        remove_access << team if team['name'] == $settings["team_name"]
+      end
+      remove_access.each do |team|
+        conn = Faraday.new(:url => 'https://api.github.com')
+        response = conn.delete("/teams/#{team['id']}/repos/#{self.org}/#{self.name}", 
+          {:access_token => self.access_token })
+      end
     end
     self.delete
   end
