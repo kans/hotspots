@@ -1,4 +1,5 @@
 require 'uri'
+require "fileutils"
 
 require 'debugger'
 require 'grit'
@@ -44,7 +45,7 @@ class Project < Sequel::Model
       teams = self.Github.orgs.teams.all self.org
       remove_access = []
       teams.each do |team|
-        remove_access << team if team['name'] == $settings["team_name"]
+        remove_access << team if team['name'] == $settings["team_name"] 
       end
       remove_access.each do |team|
         conn = Faraday.new(:url => 'https://api.github.com')
@@ -53,6 +54,7 @@ class Project < Sequel::Model
       end
     end
     self.delete
+    FileUtils.rm_rf @dir
   end
 
   def full_name()

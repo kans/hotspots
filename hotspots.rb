@@ -292,11 +292,13 @@ class Hotspots < Sinatra::Base
       begin
         project = Project.new name, token
         project.save
+        project.add_events
       rescue Sequel::DatabaseError => e
         @added_repos -= [name]
       else
         #TODO: move to a thread or something magical
         Hotspots.add_project project
+
       end
     end
     haml :added_users
@@ -325,6 +327,7 @@ end
 
 configure do
   projects = Project.all
+  next if projects.empty?
   EM.synchrony do
     res = []
     EM::Synchrony::FiberIterator.new(projects, 10).each do |project|

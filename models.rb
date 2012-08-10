@@ -13,7 +13,7 @@ $DB.create_table? :projects do
 end
 
 $DB.create_table? :events do
-  foreign_key :project_id, :projects, null: false
+  foreign_key :project_id, :projects, null: false, on_delete: :cascade
   DateTime :date, null: false
   String :sha
   String :file, null: false
