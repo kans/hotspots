@@ -200,6 +200,8 @@ class Hotspots < Sinatra::Base
   end
 
   post $urls[:ADD_REPOS] do
+    #TODO: I think a sane approach would be to just have one function that does this for each repo, or perhaps for each 
+    # incoming org.  Breaking it up into subfunctions looks difficult without a ton of passthrough .
     @added_repos = []
     repos = request.POST
     token = repos.delete "token"
@@ -247,18 +249,28 @@ class Hotspots < Sinatra::Base
 
     add_user_to_team = Set.new
     make_team_for_org = Set.new
+    add_repo_to_team = {}
     successful_org_gets.each do |full_name, reply|
       create_team = true
       reply.body.each do |team|
         if team['name'] == $settings['team_name']
           create_team = false
           add_user_to_team << team["id"]
+          add_repo_to_team[team['id']] = full_name
           break
         end
       end
       if create_team
         make_team_for_org << full_name.split('/')[0]
       end
+    end
+
+    unless add_repo_to_team.keys.empty?
+      add_repo_requests = []
+      add_repo_to_team.each do |team_id, full_name|
+        add_repo_requests << @@Request.new(full_name, "/teams/#{team_id}/repos/#{full_name}", {:access_token => token })
+      end
+      callbacks, errbacks = multi :aput, 'https://api.github.com', add_repo_requests
     end
 
     # create teams

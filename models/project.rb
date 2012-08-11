@@ -132,7 +132,13 @@ class Project < Sequel::Model
       config.basic_auth = "#{self.login}:#{@password}"
       config.adapter = :em_synchrony
     end
-    github.issues.comments.create self.org, self.name, pr_id, {body: comment}
+    begin
+      github.issues.comments.create self.org, self.name, pr_id, {body: comment}
+    rescue Exception => e
+      debugger 
+      1+1
+    end
+
   end
 
   def get_fixes_from_commits(commit_list)
