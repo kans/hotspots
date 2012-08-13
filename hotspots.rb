@@ -60,7 +60,6 @@ class Hotspots < Sinatra::Base
       if _project.id == id
         project = _project
         break
-        end
       end
     end
     project
