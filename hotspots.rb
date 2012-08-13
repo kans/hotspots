@@ -322,7 +322,12 @@ class Hotspots < Sinatra::Base
   get $urls[:HOTSPOTS] do |org, name|
     @threshold = (params[:threshold] || 0.5).to_f
     @project = @@projects[org][name]
-    spots = @project.get_hotspots
+    @sha = params[:sha]
+    if @sha
+      spots = @project.get_hotspots_for_sha("master", @sha)
+    else
+      spots = @project.get_hotspots
+    end
     @spots = Helpers::sort_hotspots(spots)
 
     if request.accept? 'text/html'
