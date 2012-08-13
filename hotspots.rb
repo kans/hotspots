@@ -56,10 +56,11 @@ class Hotspots < Sinatra::Base
     project = nil
     id = id.to_i
     @@projects.each do |org, projects|
-    projects.each do |name, _project|
-      if _project.id == id
-        project = _project
-        break
+      projects.each do |name, _project|
+        if _project.id == id
+          project = _project
+          break
+        end
       end
     end
     project
