@@ -146,7 +146,7 @@ class Hotspots < Sinatra::Base
 
 
   get $urls[:OAUTH_CALLBACK] do
-    "responsible for showing a list of projects to add after querying github"
+    # responsible for showing a list of projects to add after querying github
     @repos = []
     conn = Faraday.new(:url => 'https://github.com')
     response = conn.post '/login/oauth/access_token', {
@@ -187,8 +187,8 @@ class Hotspots < Sinatra::Base
     @removed = []
     repos = request.POST
     return redirect '/' unless repos
-    repos.each do |id, on|
-      project = self.get_project_by_id id
+    repos.each do |project_id, on|
+      project = self.get_project_by_id project_id
       @@projects[project.org].delete project.name
       if @@projects[project.org].keys.length == 0
         @@projects.delete project.org
@@ -308,7 +308,7 @@ class Hotspots < Sinatra::Base
         project = Project.new name, token
         project.save
         project.add_events
-      rescue Sequel::DatabaseError => e
+      rescue Sequel::DatabaseError
         @added_repos -= [name]
       else
         #TODO: move to a thread or something magical
