@@ -228,7 +228,7 @@ class Hotspots < Sinatra::Base
 
     successful_org_gets, errs = multi :aget, 'https://api.github.com', requests
 
-    # add user to repos that aren't a org
+    # add user to repos that don't belong to an org
     add_user_to_nonorg_requests = []
     repos_seen = []
     errs.select {|full_name, err| err.status == 404 }.each do |full_name, err|
@@ -243,7 +243,7 @@ class Hotspots < Sinatra::Base
     end
 
     unless add_user_to_nonorg_requests.empty?
-      good, bad = multi(:aput, 'https://api.github.com', add_user_to_nonorg_requests)
+      callbacks, bad = multi(:aput, 'https://api.github.com', add_user_to_nonorg_requests)
       failed_to_add += bad.keys
     end
 
@@ -314,7 +314,6 @@ class Hotspots < Sinatra::Base
       else
         #TODO: move to a thread or something magical
         Hotspots.add_project project
-
       end
     end
     haml :added_users
