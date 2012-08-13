@@ -359,8 +359,8 @@ configure do
         }.resume
         project
       }
-      callback = proc {|project|
-        res << project
+      callback = proc {|response|
+        res << response
         EM.stop() if res.length == projects.length
       }
       EM.defer( operation, callback )
