@@ -137,9 +137,8 @@ class Project < Sequel::Model
     rescue Exception => e
       puts e
       debugger 
-      1+1
+      1+1 # without this, the debugger statement will break outside this rescue block
     end
-
   end
 
   def get_fixes_from_commits(commit_list)
