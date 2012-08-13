@@ -6,6 +6,7 @@
         %a.btn.btn-success{href:"https://github.com/login/oauth/authorize?scope=repo&client_id=#{$settings['client_id']}&redirect_uri=#{$settings['address']}/oauth/callback/"} 
           %i.icon-plus-sign.icon-white
           Add
+      %hr
       %ul.nav.nav-list
         %form{action: "#{$urls[:REMOVE_PROJECTS]}", method: "POST", id:"remove-form"}
           - projects.each do |org_name, org|
@@ -15,7 +16,7 @@
                 %input{type:"checkbox", name: repo.id }
                 %a{href:"/hotspots/#{repo.org}/#{name}"} #{name}
                 %a{href: "https://github.com/#{repo.org}/#{name}"}
-                  %img{src: "/img/github.png", width: "15px", height: "15px"}
+                  %img{src:"/img/github.png", width:"15px", height:"15px", style:"float: right;"}
           %br
           %a.btn.btn-primary.btn-danger{onClick: "$('#remove-form').submit();"}
             %i.icon-remove-sign.icon-white
