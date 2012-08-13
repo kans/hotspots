@@ -34,7 +34,7 @@ class Project < Sequel::Model
     self.delete_hook
     is_org = true
     begin
-      org = self.Github.orgs.get self.org
+      self.Github.orgs.get self.org
     rescue Github::Error::GithubError => e
       is_org = false if e.is_a? Github::Error::NotFound
     end
@@ -135,6 +135,7 @@ class Project < Sequel::Model
     begin
       github.issues.comments.create self.org, self.name, pr_id, {body: comment}
     rescue Exception => e
+      puts e
       debugger 
       1+1
     end
